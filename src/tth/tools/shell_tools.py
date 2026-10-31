@@ -171,11 +171,14 @@ class ShellToolbox:
             data["note"] = "ran the selection/preview part only"
         if r.stderr.strip():
             data["stderr"] = r.stderr.strip()[:600]
+        ok = r.ok
         if r.timed_out:
             data["error"] = f"timed out after {self.timeout}s"
-        if r.truncated:
-            data["truncated"] = True
-        return ToolResult(data, ok=r.ok)
+            ok = False
+        elif not out and r.stderr.strip() and not any(r.stderr.strip().startswith(s) for s in ("stat: ./.env", "stat: ./")):
+            data["error"] = r.stderr.strip()[:600]
+            ok = False
+        return ToolResult(data, ok=ok)
 
     # ---- decisions ----------------------------------------------------------------
     def t_stage(self, command: str, explanation: str = "") -> ToolResult:
