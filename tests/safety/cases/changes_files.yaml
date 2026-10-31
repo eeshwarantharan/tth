@@ -1,0 +1,38 @@
+# Commands that change files; destructive ones must be rewritten, never staged raw.
+- {cmd: "mkdir -p build/out", tier: changes-files}
+- {cmd: "touch notes.txt", tier: changes-files}
+- {cmd: "grep ERROR app.log > errors.txt", tier: changes-files}
+- {cmd: "echo done >> log.txt", tier: changes-files}
+- {cmd: "ls | tee listing.txt", tier: changes-files}
+- {cmd: "tar -czf out.tgz src", tier: changes-files}
+- {cmd: "gzip big.log", tier: changes-files}
+- {cmd: "git add -A", tier: changes-files}
+- {cmd: "git commit -m wip", tier: changes-files}
+- {cmd: "git branch -d old", tier: changes-files}
+- {cmd: "chmod +x run.sh", tier: changes-files}
+- {cmd: "ln -s a b", tier: changes-files}
+- {cmd: "mv -n a.txt b.txt", tier: changes-files, staged: "mv -n a.txt b.txt"}
+- {cmd: "mv a.txt b.txt", tier: changes-files, staged: "mv -n a.txt b.txt", never_raw: true}
+- {cmd: "mv -f a.txt b.txt", tier: changes-files, staged: "mv -n a.txt b.txt", never_raw: true}
+- {cmd: "cp -r src dst", tier: changes-files, staged: "cp -n -r src dst", never_raw: true}
+- {cmd: "cp -rf src dst", tier: changes-files, staged: "cp -n -r src dst", never_raw: true}
+- {cmd: "rm notes.txt", tier: changes-files, staged_contains: "trash", never_raw: true, preview: "ls -ld -- notes.txt"}
+- {cmd: "rm -rf build", tier: changes-files, staged_contains: "trash", never_raw: true}
+- {cmd: "rm -f *.log", tier: changes-files, staged_contains: "trash", never_raw: true}
+- {cmd: "rm -- -weird", tier: changes-files, staged: "trash ./-weird", never_raw: true}
+- {cmd: "find . -name '*.tmp' -delete", tier: changes-files, staged_contains: "trash", never_raw: true, preview: "find . -name '*.tmp' -print"}
+- {cmd: "find . -name '*.tmp' -exec rm {} ';'", tier: changes-files, staged_contains: "trash", never_raw: true}
+- {cmd: "find logs -mtime +30 -exec rm -f {} +", tier: changes-files, staged_contains: "trash", never_raw: true}
+- {cmd: "sed -i 's/a/b/' f.txt", tier: changes-files, staged_contains: "-i.bak", never_raw: true}
+- {cmd: "sed -i '' 's/a/b/' f.txt", tier: changes-files, staged_contains: "-i.bak", never_raw: true}
+- {cmd: "unlink file", tier: changes-files, staged_contains: "trash", never_raw: true}
+# Regression: rewrites must keep globs unquoted so they still expand (found by the shell env verifier).
+- {cmd: "rm logs/*.tmp", tier: changes-files, staged: "trash logs/*.tmp", preview: "ls -ld -- logs/*.tmp"}
+- {cmd: "rm 'my file.txt'", tier: changes-files, staged: "trash 'my file.txt'"}
+- {cmd: "find . -name '*.tmp' -delete", tier: changes-files, staged: "find . -name '*.tmp' -exec trash {} +"}
+- {cmd: "mv -f *.md archive/", tier: changes-files, staged: "mv -n *.md archive/"}
+- {cmd: "sed -i '' 's/a b/c/' 'my file'", tier: changes-files, staged: "sed -i.bak 's/a b/c/' 'my file'"}
+- {cmd: "mkdir -p archive && mv notes/*.md archive/", tier: changes-files, staged: "mkdir -p archive && mv -n notes/*.md archive/"}
+- {cmd: "mkdir -p b && cp a.txt b/ && cp c.txt b/", tier: changes-files, staged: "mkdir -p b && cp -n a.txt b/ && cp -n c.txt b/"}
+- {cmd: "mkdir -p b && mv -f a b/", tier: changes-files, staged: null}
+- {cmd: "mv a b && rm c", tier: changes-files, staged: null}

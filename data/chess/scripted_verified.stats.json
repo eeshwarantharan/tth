@@ -1,0 +1,19 @@
+{
+ "raw": 675,
+ "verified": 651,
+ "rate": 0.964,
+ "by_kind": {
+  "legal": 120,
+  "check": 77,
+  "captures": 80,
+  "pinned": 80,
+  "mate1": 65,
+  "mate1_none": 40,
+  "missing_piece": 40,
+  "best_move": 75,
+  "engine_eval": 74
+ },
+ "by_teacher": {
+  "scripted-oracle (python-chess + Stockfish)": 651
+ }
+}

@@ -1,0 +1,16 @@
+{
+ "raw": 760,
+ "verified": 751,
+ "rate": 0.988,
+ "by_kind": {
+  "count": 188,
+  "sum": 188,
+  "max_name": 93,
+  "lookup": 94,
+  "missing": 93,
+  "forecast": 95
+ },
+ "by_teacher": {
+  "scripted-oracle (table)": 751
+ }
+}

@@ -1,0 +1,10 @@
+{
+ "chess_recover": {
+  "arm": "C0_chess",
+  "episode": "8916cc8b65bc",
+  "task_id": "e90000-50"
+ },
+ "chess_escalate": null,
+ "shell_stage": null,
+ "shell_escalate": null
+}

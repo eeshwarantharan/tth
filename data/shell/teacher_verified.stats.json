@@ -1,0 +1,35 @@
+{
+ "raw": 163,
+ "verified": 91,
+ "rate": 0.558,
+ "by_family": {
+  "count_py": 5,
+  "failed_cost": 4,
+  "region_units": 6,
+  "count_lines": 6,
+  "count_failed": 5,
+  "count_level": 6,
+  "error_components": 6,
+  "component_count": 5,
+  "big_logs": 4,
+  "users_city": 3,
+  "users_older": 3,
+  "move_notes": 2,
+  "network": 8,
+  "missing_file": 1,
+  "model_tokens": 4,
+  "ambiguous": 4,
+  "product_revenue": 3,
+  "avg_units": 4,
+  "top_level": 3,
+  "todo_files": 1,
+  "largest_log": 3,
+  "delete_tmp": 2,
+  "copy_config": 2,
+  "delete_old_logs": 1
+ },
+ "by_teacher": {
+  "nvidia/nemotron-3.5-super-vl-120b-a12b": 42,
+  "nvidia/nemotron-3.5-lightning-30b-a3b": 49
+ }
+}

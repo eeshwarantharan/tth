@@ -1,0 +1,51 @@
+# Commands that must classify as read-only (they may be dry-run in the sandbox).
+- {cmd: "ls -la", tier: read-only}
+- {cmd: "ls -lhS | head -20", tier: read-only}
+- {cmd: "cat README.md", tier: read-only}
+- {cmd: "head -n 5 data.csv", tier: read-only}
+- {cmd: "tail -f app.log", tier: read-only}
+- {cmd: "wc -l *.py", tier: read-only}
+- {cmd: "grep -rn TODO src", tier: read-only}
+- {cmd: "grep -c ERROR app.log 2>/dev/null", tier: read-only}
+- {cmd: "rg -l 'fn main'", tier: read-only}
+- {cmd: "find . -name '*.log' -size +1M", tier: read-only}
+- {cmd: "find . -type f -mtime -1 -print", tier: read-only}
+- {cmd: "find . -name '*.py' -exec wc -l {} +", tier: read-only}
+- {cmd: "find . -name '*.py' -exec grep -l import {} ';'", tier: read-only}
+- {cmd: "du -sh * | sort -h", tier: read-only}
+- {cmd: "df -h", tier: read-only}
+- {cmd: "sort data.txt | uniq -c | sort -rn | head", tier: read-only}
+- {cmd: "cut -d, -f2 data.csv | sort | uniq", tier: read-only}
+- {cmd: "jq '.cost' metrics.jsonl | awk '{s+=$1} END {print s}'", tier: read-only}
+- {cmd: "jq -r 'select(.status==\"failed\") | .tokens' metrics.jsonl | paste -sd+ - | bc", tier: read-only}
+- {cmd: "awk -F, 'NR>1 && $3 > 100 {print $1}' sales.csv", tier: read-only}
+- {cmd: "awk '{s+=$2} END {print s}' f.txt", tier: read-only}
+- {cmd: "sed -n '1,10p' file.txt", tier: read-only}
+- {cmd: "sed 's/foo/bar/g' input.txt", tier: read-only}
+- {cmd: "git status", tier: read-only}
+- {cmd: "git log --oneline -10", tier: read-only}
+- {cmd: "git diff HEAD~1 --stat", tier: read-only}
+- {cmd: "git branch -a", tier: read-only}
+- {cmd: "git status && git log -5", tier: read-only}
+- {cmd: "git -C repo log -1", tier: read-only}
+- {cmd: "git config --get user.name", tier: read-only}
+- {cmd: "wc -l $(find . -name '*.py')", tier: read-only}
+- {cmd: "diff <(sort a.txt) <(sort b.txt)", tier: read-only}
+- {cmd: "tar -tzf archive.tgz", tier: read-only}
+- {cmd: "stat -f %z file.bin", tier: read-only}
+- {cmd: "file *", tier: read-only}
+- {cmd: "echo hello", tier: read-only}
+- {cmd: "printf '%s\\n' a b", tier: read-only}
+- {cmd: "pwd", tier: read-only}
+- {cmd: "ps aux | grep python", tier: read-only}
+- {cmd: "uname -a", tier: read-only}
+- {cmd: "which python3", tier: read-only}
+- {cmd: "cd src && ls", tier: read-only}
+- {cmd: "(cd src && ls)", tier: read-only}
+- {cmd: "ls > /dev/null 2>&1", tier: read-only}
+- {cmd: "cat <<EOF\nhi\nEOF", tier: read-only}
+- {cmd: "shasum -a 256 file.iso", tier: read-only}
+- {cmd: "tree -L 2", tier: read-only}
+- {cmd: "xxd file.bin | head", tier: read-only}
+- {cmd: "comm -12 <(sort a) <(sort b)", tier: read-only}
+- {cmd: "zcat logs.gz | grep ERROR | wc -l", tier: read-only}

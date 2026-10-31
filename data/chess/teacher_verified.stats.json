@@ -1,0 +1,19 @@
+{
+ "raw": 156,
+ "verified": 87,
+ "rate": 0.558,
+ "by_kind": {
+  "legal": 23,
+  "check": 15,
+  "pinned": 12,
+  "captures": 9,
+  "mate1": 13,
+  "best_move": 5,
+  "missing_piece": 9,
+  "engine_eval": 1
+ },
+ "by_teacher": {
+  "nvidia/nemotron-3.5-super-vl-120b-a12b": 71,
+  "nvidia/nemotron-3.5-lightning-30b-a3b": 16
+ }
+}

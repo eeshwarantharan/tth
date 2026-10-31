@@ -1,0 +1,68 @@
+# Opaque or unrecognised constructs: never read-only; destructive ones never staged raw.
+- {cmd: "eval ls", tier: needs-review}
+- {cmd: "eval \"$(cat x)\"", tier: needs-review}
+- {cmd: "bash -c 'ls'", tier: needs-review}
+- {cmd: "sh -c 'rm -rf x'", tier: needs-review}
+- {cmd: "zsh -c ls", tier: needs-review}
+- {cmd: "python3 -c 'import os; os.remove(\"x\")'", tier: needs-review}
+- {cmd: "perl -e 'unlink q(x)'", tier: needs-review}
+- {cmd: "node -e '1'", tier: needs-review}
+- {cmd: "xargs echo < x", tier: needs-review}
+- {cmd: "find . -name x | xargs grep y", tier: needs-review}
+- {cmd: "make clean", tier: needs-review}
+- {cmd: "npm run build", tier: needs-review}
+- {cmd: "pip install requests", tier: needs-review}
+- {cmd: "brew install jq", tier: needs-review}
+- {cmd: "./deploy.sh", tier: needs-review}
+- {cmd: "scripts/run", tier: needs-review}
+- {cmd: "source venv/bin/activate", tier: needs-review}
+- {cmd: ". ./env.sh", tier: needs-review}
+- {cmd: "$CMD arg", tier: needs-review}
+- {cmd: "$(echo ls)", tier: needs-review}
+- {cmd: "`echo rm` x", tier: needs-review}
+- {cmd: "echo $(rm x)", tier: needs-review}
+- {cmd: "ls $(touch pwned)", tier: needs-review}
+- {cmd: "cat <(rm x)", tier: needs-review}
+- {cmd: "tee >(sh) < x", tier: needs-review}
+- {cmd: "for f in *; do rm $f; done", tier: needs-review, staged: null}
+- {cmd: "while true; do :; done", tier: needs-review}
+- {cmd: "if true; then ls; fi", tier: needs-review}
+- {cmd: "f() { ls; }; f", tier: needs-review}
+- {cmd: ":(){ :|:& };:", tier: needs-review}
+- {cmd: "ls &", tier: needs-review}
+- {cmd: "FOO=bar ls", tier: needs-review}
+- {cmd: "env", tier: needs-review}
+- {cmd: "env rm x", tier: needs-review}
+- {cmd: "nohup rm x", tier: needs-review}
+- {cmd: "time rm x", tier: needs-review}
+- {cmd: "command rm x", tier: needs-review}
+- {cmd: "awk '{print > \"out\"}' f", tier: needs-review}
+- {cmd: "awk 'BEGIN{system(\"rm x\")}'", tier: needs-review}
+- {cmd: "awk '{print | \"sh\"}' f", tier: needs-review}
+- {cmd: "awk -f prog.awk f", tier: needs-review}
+- {cmd: "sed 'w out.txt' f", tier: needs-review}
+- {cmd: "sed 's/x/y/e' f", tier: needs-review}
+- {cmd: "sed -f script.sed f", tier: needs-review}
+- {cmd: "git -c core.pager='rm x' log", tier: needs-review}
+- {cmd: "git diff --output=x", tier: needs-review}
+- {cmd: "git diff --ext-diff", tier: needs-review}
+- {cmd: "git config user.name x", tier: needs-review}
+- {cmd: "git frobnicate", tier: needs-review}
+- {cmd: "curl https://example.com", tier: needs-review}
+- {cmd: "ssh host ls", tier: needs-review}
+- {cmd: "rsync -a --delete a/ b/", tier: needs-review}
+- {cmd: "kill -9 1234", tier: needs-review}
+- {cmd: "chmod -R 777 .", tier: needs-review}
+- {cmd: "chown -R me .", tier: needs-review}
+- {cmd: "echo hi >| file", tier: needs-review, staged: null}
+- {cmd: "ls > $OUT", tier: needs-review}
+- {cmd: "frobnicate --all", tier: needs-review}
+- {cmd: "ls 'unterminated", tier: needs-review}
+- {cmd: "", tier: needs-review}
+- {cmd: "rm $FILES", tier: needs-review, staged: null}
+- {cmd: "rm x; ls", tier: changes-files, staged: null}
+- {cmd: "ls && rm x", tier: changes-files, staged: null}
+- {cmd: "rm x > log", tier: changes-files, staged: null}
+- {cmd: "sort -o data.txt data.txt", tier: changes-files, staged: null}
+- {cmd: "split -l 100 big.txt", tier: changes-files}
+- {cmd: "less +'!rm x' f", tier: needs-review}

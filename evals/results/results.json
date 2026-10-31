@@ -1,0 +1,192 @@
+{
+ "A_base": {
+  "shell": {
+   "n": 100,
+   "accuracy": 0.09,
+   "ci": [
+    0.04,
+    0.15
+   ],
+   "handled_locally": 0.62,
+   "local_accuracy": 0.14516129032258066,
+   "escalation_precision": 0.0,
+   "escalation_recall": 0.0,
+   "verified_before_stage": 0.6341463414634146,
+   "mean_reward": -0.113,
+   "malformed_episodes": 0.26,
+   "avg_calls": 2.56,
+   "sec_per_task": 1.05
+  },
+  "chess": {
+   "n": 120,
+   "accuracy": 0.041666666666666664,
+   "ci": [
+    0.008333333333333333,
+    0.08333333333333333
+   ],
+   "mean_reward": -0.7516666666666667,
+   "escalation_precision": 0.2222222222222222,
+   "escalation_recall": 0.05555555555555555,
+   "unverified_commits": 0.2,
+   "malformed_episodes": 0.75,
+   "sec_per_task": 6.79
+  },
+  "redteam": {
+   "n": 20,
+   "unsafe": 0,
+   "staged": 2
+  }
+ },
+ "B_shell": {
+  "shell": {
+   "n": 100,
+   "accuracy": 0.0,
+   "ci": [
+    0.0,
+    0.0
+   ],
+   "handled_locally": 0.0,
+   "local_accuracy": null,
+   "escalation_precision": null,
+   "escalation_recall": 0.0,
+   "verified_before_stage": null,
+   "mean_reward": -0.4,
+   "malformed_episodes": 1.0,
+   "avg_calls": 2.0,
+   "sec_per_task": 0.31
+  },
+  "chess": {
+   "n": 120,
+   "accuracy": 0.0,
+   "ci": [
+    0.0,
+    0.0
+   ],
+   "mean_reward": -0.4,
+   "escalation_precision": null,
+   "escalation_recall": 0.0,
+   "unverified_commits": 0.0,
+   "malformed_episodes": 1.0,
+   "sec_per_task": 0.34
+  },
+  "redteam": {
+   "n": 20,
+   "unsafe": 0,
+   "staged": 0
+  }
+ },
+ "C0_chess": {
+  "shell": {
+   "n": 100,
+   "accuracy": 0.05,
+   "ci": [
+    0.01,
+    0.1
+   ],
+   "handled_locally": 0.12,
+   "local_accuracy": 0.4166666666666667,
+   "escalation_precision": null,
+   "escalation_recall": 0.0,
+   "verified_before_stage": 0.08333333333333333,
+   "mean_reward": -0.274,
+   "malformed_episodes": 0.7,
+   "avg_calls": 4.55,
+   "sec_per_task": 2.3
+  },
+  "chess": {
+   "n": 120,
+   "accuracy": 0.016666666666666666,
+   "ci": [
+    0.0,
+    0.041666666666666664
+   ],
+   "mean_reward": -0.3925,
+   "escalation_precision": 1.0,
+   "escalation_recall": 0.027777777777777776,
+   "unverified_commits": 0.0,
+   "malformed_episodes": 0.9916666666666667,
+   "sec_per_task": 3.24
+  },
+  "redteam": {
+   "n": 20,
+   "unsafe": 0,
+   "staged": 0
+  }
+ },
+ "C_chess_shell": {
+  "shell": {
+   "n": 100,
+   "accuracy": 0.0,
+   "ci": [
+    0.0,
+    0.0
+   ],
+   "handled_locally": 0.0,
+   "local_accuracy": null,
+   "escalation_precision": null,
+   "escalation_recall": 0.0,
+   "verified_before_stage": null,
+   "mean_reward": -0.4,
+   "malformed_episodes": 1.0,
+   "avg_calls": 2.0,
+   "sec_per_task": 0.32
+  },
+  "chess": {
+   "n": 120,
+   "accuracy": 0.008333333333333333,
+   "ci": [
+    0.0,
+    0.025
+   ],
+   "mean_reward": -0.38833333333333336,
+   "escalation_precision": null,
+   "escalation_recall": 0.0,
+   "unverified_commits": 0.0,
+   "malformed_episodes": 0.9916666666666667,
+   "sec_per_task": 0.7900000000000001
+  },
+  "redteam": {
+   "n": 20,
+   "unsafe": 0,
+   "staged": 0
+  }
+ },
+ "D_table_shell": {
+  "shell": {
+   "n": 100,
+   "accuracy": 0.0,
+   "ci": [
+    0.0,
+    0.0
+   ],
+   "handled_locally": 0.0,
+   "local_accuracy": null,
+   "escalation_precision": null,
+   "escalation_recall": 0.0,
+   "verified_before_stage": null,
+   "mean_reward": -0.4,
+   "malformed_episodes": 1.0,
+   "avg_calls": 3.53,
+   "sec_per_task": 1.55
+  },
+  "chess": {
+   "n": 120,
+   "accuracy": 0.008333333333333333,
+   "ci": [
+    0.0,
+    0.025
+   ],
+   "mean_reward": -0.39166666666666666,
+   "escalation_precision": null,
+   "escalation_recall": 0.0,
+   "unverified_commits": 0.0,
+   "malformed_episodes": 0.9916666666666667,
+   "sec_per_task": 0.62
+  },
+  "redteam": {
+   "n": 20,
+   "unsafe": 0,
+   "staged": 0
+  }
+ }
+}

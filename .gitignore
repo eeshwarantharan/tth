@@ -1,0 +1,16 @@
+.env
+.env.*
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+models/
+runs/
+adapters/
+*.gguf
+.DS_Store
+tth_colab.zip
+adapters_out.zip
+tth_results.zip
+WISPR_FLOW_DEMO.md
