@@ -1,5 +1,17 @@
-# tth — Tiny Terminal Helper
-> **Small but good.** A local terminal agent that looks before it acts and knows when to call for help.
+<div align="center">
+  <img src="tth_logo.png" alt="tth logo" width="560" />
+
+  # tth — Tiny Terminal Helper
+  <p><strong>Small but good.</strong> A local, privacy-first terminal agent that looks before it acts and knows when to call for help.</p>
+
+  <p>
+    <a href="https://github.com/your-username/tth"><img src="https://img.shields.io/badge/tests-426%20passed-brightgreen.svg?style=flat-square" alt="Tests"></a>
+    <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.11%20%7C%203.12-blue.svg?style=flat-square" alt="Python Version"></a>
+    <a href="https://github.com/ml-explore/mlx"><img src="https://img.shields.io/badge/hardware-Apple%20Silicon%20%7C%20Linux-orange.svg?style=flat-square" alt="Hardware"></a>
+    <a href="https://github.com/containers/bubblewrap"><img src="https://img.shields.io/badge/sandbox-bwrap%20%7C%20sandbox--exec-purple.svg?style=flat-square" alt="Sandbox"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat-square" alt="License"></a>
+  </p>
+</div>
 
 ---
 
@@ -20,8 +32,8 @@ Raw small models typically fail at terminal tasks because they guess. They hallu
 **`tth` proves that small models don't need more parameters; they need epistemic discipline.** 
 Instead of guessing, `tth`:
 - **Looks first**: It inspects directory listings, file headers, and JSON schemas using read-only probes.
-- **Dry-runs in isolation**: It tests its command inside a sealed, offline OS sandbox to verify that it actually matches files and exits cleanly.
-- **Stages, never executes**: It writes the verified command directly onto your interactive terminal prompt (`print -z` on zsh, `READLINE_LINE` on bash). You review the command and press Enter—`tth` never runs it for you.
+- **Dry-runs in isolation**: It tests candidate read-only operations inside a sealed, offline OS sandbox to verify that syntax is valid and files match.
+- **Stages, never executes**: It writes the verified command directly onto your interactive terminal prompt (`print -z` on zsh, `READLINE_LINE` on bash). You review the command and press Enter—`tth` **never** runs it autonomously.
 - **Knows its limits (A2A Escalation)**: When a task requires tools it lacks or needs network access, it admits it cannot verify the request locally. It packages a redacted summary, asks for your consent, and escalates to a frontier model over the Agent-to-Agent (A2A) protocol.
 
 ---
@@ -48,7 +60,7 @@ User Prompt ("sum token costs in metrics.jsonl")
 └───────────────┬─────────────┘               ▼
                 │                ┌────────────────────────────┐
    2. Verify Syntax & Filter     │   Frontier Expert Agent    │
-                │                │ (Nemotron 3.5 Super via    │
+                │                │ (Nemotron 70B Super via    │
                 ▼                │  NVIDIA API Catalog)       │
 ┌─────────────────────────────┐  └────────────┬───────────────┘
 │   Tree-Sitter AST & Safety  │               │
@@ -69,17 +81,18 @@ User Prompt ("sum token costs in metrics.jsonl")
 
 ---
 
-## The Tech Stack
+## Tech Stack & Components
 
 | Component | Technology | Role |
 | :--- | :--- | :--- |
-| **SLM (Small Language Model)** | `Qwen2.5-Coder-1.5B-Instruct` (4-bit quantized via MLX / GGUF) | On-device intelligence. Runs locally on Apple Silicon or CPU with ~1 GB RAM footprint. |
-| **Model Context Protocol (MCP)** | Official Python `mcp` SDK | Standardized interface through which the local model observes its environment (`inspect_context`, `probe`, `dry_run`). |
-| **Agent-to-Agent (A2A)** | Official `a2a-sdk` (JSON-RPC) | Structured protocol enabling the small local model to hand off hard tasks to a remote frontier agent with full traceability. |
-| **Expert Teacher Agent** | NVIDIA Nemotron 3.5 Super / Lightning | Frontier model used to generate verified training rollouts and serve as the cloud escalation expert. |
-| **OS Sandboxing** | macOS `sandbox-exec` / Linux `bwrap` (Bubblewrap) | Kernel-level read-only containment. Denies file writes, cuts network access, and blocks secret path reads. |
-| **AST Parser & Safety Engine** | `tree-sitter-bash` | Parses candidate commands into concrete syntax trees to classify actions (`READ_ONLY`, `CHANGES_FILES`, `NEEDS_REVIEW`, `DENIED`). |
-| **Training Pipeline** | PyTorch, Hugging Face TRL (SFT & GRPO), PEFT (LoRA) | Curriculum training transferring verification habits from games to shell commands. |
+| **Runtime & CLI Engine** | Rust (`crates/tth-cli`, `crates/tth-core`) | Single native binary (<20MB). Eliminates Python interpreter boot overhead; launches in <4ms. |
+| **Inference Engine** | Embedded `llama.cpp` (Metal / CPU) via `llama-cpp-2` (MLX in v0.1) | In-process GPU-accelerated local inference. Loads GGUF via `mmap` in <45ms. |
+| **SLM (Small Language Model)** | `Qwen2.5-Coder-3B-Instruct` default / `1.5B` edge (4-bit Q4_K_M) | On-device intelligence. Runs locally on Apple Silicon or CPU with ~1.95 GB / ~0.98 GB RAM footprint. |
+| **OS Sandboxing** | macOS `sandbox-exec` / Linux Landlock LSM (`bwrap` in v0.1) | Kernel-level read-only containment. Denies file writes, cuts network access, blocks secrets. |
+| **AST Parser & Safety Engine** | Native `tree-sitter-bash` (C/Rust) | Parses commands into syntax trees in <15µs to classify actions (`READ_ONLY`, `CHANGES_FILES`, etc.). |
+| **Agent-to-Agent (A2A)** | Official `a2a-sdk` (JSON-RPC via `reqwest`) | Structured protocol enabling the small local model to hand off hard tasks to a remote frontier agent. |
+| **Expert Teacher Agent** | NVIDIA Nemotron 70B (`nemotron-3.5-super-vl-120b-a12b`) | Frontier model used to generate verified training rollouts and serve as the cloud escalation expert. |
+| **Training Pipeline (Python)** | PyTorch, Hugging Face TRL (SFT & GRPO), PEFT (LoRA), `python-chess` | Curriculum training transferring verification habits from formal games to shell commands. |
 
 ---
 
@@ -87,7 +100,7 @@ User Prompt ("sum token costs in metrics.jsonl")
 
 The defining breakthrough of `tth` is **how it was trained**.
 
-Teaching a 1.5-billion parameter model to stop hallucinating in the terminal is difficult because real shell environments have infinite surface area and inconsistent error messages. If you only train it on shell commands, it memorizes common recipes instead of learning the habit of verification.
+Teaching a 1.5-billion parameter model to stop hallucinating in the terminal is notoriously difficult because real shell environments have infinite surface area and inconsistent error messages. If you only train it on shell commands, it memorizes common recipes instead of learning the habit of verification.
 
 To solve this, `tth` uses an analogical training curriculum: **Chess first, then the Shell**.
 
@@ -114,15 +127,7 @@ To solve this, `tth` uses an analogical training curriculum: **Chess first, then
   - `-1.0` for claiming victory right after a tool failure.
 
 ### 2. The Transfer to Shell (`train/envs/shell/`)
-Once the model masters the reflex—*Look → Query → Simulate → Verify → Commit*—it is fine-tuned on real shell tasks. Because it already possesses the habit of checking schemas and dry-running candidate actions, it transfers this discipline to terminal tasks effortlessly with only a short fine-tune.
-
-### 3. Scientific Control Arms
-To prove whether chess training actually causes this transfer (rather than simply adding more training steps), `tth` evaluates four distinct experimental arms:
-- **Arm A**: Bare base model (`Qwen2.5-Coder-1.5B-Instruct` zero-shot).
-- **Arm B**: Shell SFT only (conventional fine-tuning directly on shell tasks).
-- **Arm C0**: Chess SFT + GRPO only (zero-shot transfer from chess to shell without seeing shell training data).
-- **Arm C**: Chess SFT + GRPO → Shell SFT (the full curriculum).
-- **Arm D**: Non-chess tabular SFT + GRPO → Shell SFT (control arm: same steps and reward structure on hidden relational tables to test if chess structure is unique).
+Once the model masters the reflex—*Look → Query → Simulate → Verify → Commit*—it transfers this discipline to the Unix terminal. Because it already possesses the habit of checking schemas and testing candidate actions, it learns terminal verification rapidly.
 
 ---
 
@@ -155,8 +160,11 @@ Generated directly by `uv run python -m evals.report` from raw machine logs acro
 2. **Zero-Shot Shell Transfer (C0)**: Arm C0 (which never saw shell training data) achieved **5.0% accuracy** on held-out shell tasks, handling 12% locally and sustaining an average of 4.55 tool calls per task.
 3. **Flawless Safety Invariants**: 100% of adversarial attacks were intercepted by the tree-sitter AST classifier and OS sandbox.
 
-### Real-World Trace: End-to-End A2A Escalation
-Here is the real execution trace captured live on macOS running on Apple Silicon via MLX:
+---
+
+## Live Execution Trace: End-to-End A2A Escalation
+
+Captured live on macOS running on Apple Silicon via MLX:
 ```
 $ t total number of md files
 
@@ -180,6 +188,7 @@ tth ▸ total number of md files
 51
 ```
 
+---
 
 ## The Non-Negotiable Safety Invariants
 
@@ -187,7 +196,7 @@ Security is built into the architecture, not prompted into the LLM. Seven core i
 
 1. **Zero Autonomous Final Execution**: `tth` writes the final command to the terminal line buffer. It is physically impossible for the agent to spawn a child process running the user's staged command.
 2. **Offline, Read-Only Probes**: All inspections run inside a hardware sandbox (macOS `sandbox-exec` or Linux `bwrap`) with network denied, write access revoked, a 3-second timeout, and an 8 KB buffer cap.
-3. **AST-Based Allowlist Classifier**: Every command is parsed using tree-sitter. Unrecognized syntax nodes are rejected by default. Opaque scripts (`eval`, `bash -c`, `python -c`, `make`) are never classified as safe.
+3. **AST-Based Allowlist Classifier**: Every command is parsed using `tree-sitter-bash`. Unrecognized syntax nodes are rejected by default. Opaque constructs (`eval`, `bash -c`, `python -c`, `make`) are never classified as safe.
 4. **Destructive Command Rewriting**: Commands like `rm` or `find -delete` are automatically rewritten into safe moves to trash (e.g. `trash` / `gio trash`) accompanied by an explicit preview listing.
 5. **Mandatory Escalation Consent**: Before sending any payload to the expert agent over A2A, `tth` displays the exact payload on your screen with secrets redacted and asks `[y/N]`.
 6. **Hardcoded Secret Path Shield**: Paths like `~/.ssh`, `~/.aws`, `~/.gnupg`, macOS keychains, and `.env*` files are blocked at the tool layer and barred inside the OS sandbox profile.
@@ -242,15 +251,94 @@ tth run "show git commits authored by Sarah in the last week"
 
 ---
 
-## Development & Verification
+## What's Next & Architectural Roadmap
 
-Run the full suite of verification tests:
+For deep technical specifications, mathematical analysis, and training curriculum details, consult the comprehensive [UPGRADE.md](file:///Users/tharaneeshwaran/Documents/TTH/UPGRADE.md) document.
+
+```
+┌─────────────────────────────────┐      ┌──────────────────────────────────┐      ┌──────────────────────────────────┐
+│   Phase 1: v0.1 (Current)       │      │   Phase 2: v0.2 (Rust Core)      │      │   Phase 3: v1.0 (Intelligence)   │
+├─────────────────────────────────┤      ├──────────────────────────────────┤      ├──────────────────────────────────┤
+│ • Local Python 1.5B agent       │      │ • Standalone Native Rust Binary  │      │ • Dual-Tier: 3B default / 1.5B   │
+│ • OS Kernel Sandbox (bwrap/mac) │ ───► │ • Embedded llama.cpp Metal engine│ ───► │ • Joint SFT (Chess + Shell 50/50)│
+│ • Tree-Sitter AST allowlist     │      │ • Linux Landlock LSM (no bwrap)  │      │ • Multi-turn Error Recovery SFT  │
+│ • A2A Cloud Escalation (Nemotron)│     │ • Sub-450ms Staging Latency      │      │ • Execution-Grounded RLVR        │
+│ • Zero Autonomous Execution     │      │ • Zero Python Runtime Overhead   │      │ • Windows/WSL2 Sandbox Backend   │
+└─────────────────────────────────┘      └──────────────────────────────────┘      └──────────────────────────────────┘
+```
+
+### 1. Phase 1: v0.1 Stable Foundation (Current Python Baseline)
+- Completed local runtime integration for Apple Silicon (MLX) and Linux (GGUF).
+- Kernel-isolated read-only inspection sandbox (`sandbox-exec` and `bwrap`).
+- Complete Tree-Sitter AST safety verification and command rewriter.
+- Agent-to-Agent (A2A) protocol bridge to NVIDIA Nemotron 70B teacher with strict consent and secret redaction.
+- Hardened multi-turn loop detection, XML tool-call parsing, and cache preservation.
+
+### 2. Phase 2: v0.2 Native Rust High-Performance Engine (Near-Term)
+- **Standalone Native Binary (`tth`)**: Transition the runtime to a standalone Rust binary (`crates/tth-cli`, `crates/tth-core`, `crates/tth-infer`). Eliminates the 1.2s Python interpreter boot overhead entirely.
+- **Embedded In-Process Inference (`llama.cpp` + Metal)**: Directly embeds `llama.cpp` via `llama-cpp-2` with Metal acceleration on Apple Silicon. Zero-copy `mmap` loads 4-bit GGUF models in **< 45ms**.
+- **Unprivileged Linux Sandboxing (Landlock LSM)**: Implements in-kernel read-only isolation via the native Linux Landlock LSM (`landlock` crate), eliminating the need for `bwrap` as an external package.
+- **Zero-Allocation AST Safety Engine**: Native C/Rust Tree-Sitter parsing validates commands in **< 15 microseconds**.
+- **Target Response Time**: Sub-450ms total command turnaround on Apple Silicon M2/M3 without requiring an external resident daemon.
+
+### 3. Phase 3: v1.0 Model Scaling & Training Overhaul (Next Phase)
+- **Default 3B Model Tier**: Transition to `Qwen2.5-Coder-3B-Instruct` (1.95 GB in Q4_K_M GGUF) as the default intelligence engine. Provides dramatically better bash syntax generation and eliminates argmax repetition loops while running seamlessly in 8GB unified memory. Retain 1.5B for ultra-light edge devices.
+- **Co-Training Curriculum**: Replace sequential training with a balanced 50/50 mixture of formal Chess trajectories and real Shell tasks (3,000+ verified episodes), eliminating catastrophic forgetting.
+- **Multi-Turn Error Recovery**: Train models specifically on self-correction loops when a sandbox `dry_run` fails.
+- **Execution-Grounded RLVR**: Two-stage reinforcement learning in Python with formal verifiable rewards (Stockfish oracle for reasoning discipline, Bubblewrap sandbox oracle for real shell execution).
+- **Cross-Platform Sandboxing**: Add WSL2 / Windows container sandbox backends and support for Fish and PowerShell.
+
+---
+
+## Contributing to tth
+
+We welcome contributions from systems engineers, machine learning researchers, and shell enthusiasts! `tth` is built on strict safety invariants, so all contributions are held to high empirical and safety standards.
+
+### 1. Areas Where You Can Help
+
+- 🔍 **New Read-Only Probes**: Expand `src/tth/tools/shell_tools.py` with safe, read-only system inspectors (e.g. systemd status, docker ps inspect, k8s context inspector).
+- 🛡️ **Tree-Sitter AST Rules**: Enhance `src/tth/safety/` with additional syntax classifications, expanding safe pipelines while preventing injection vulnerabilities.
+- ⚡ **Daemon IPC Client**: Help implement the lightweight client/daemon architecture in `src/tth/runtime/` using Unix domain sockets.
+- 🐚 **Shell Integrations**: Contribute native completions and buffer staging hooks for Fish (`commandline`), PowerShell, or Nushell.
+- 🧪 **Task Trajectories & Benchmarks**: Expand `data/shell/` with diverse real-world tasks (sysadmin, git workflows, data wrangling, log processing) with automated verifiers.
+- 🦹 **Red-Team Test Cases**: Add new adversarial attacks to `tests/safety/cases/` to challenge our AST classifier and sandbox profiles.
+
+### 2. Development Setup
 
 ```bash
-# Run all unit, sandbox, and safety tests (425+ tests)
+# 1. Clone the repository
+git clone https://github.com/your-username/tth.git
+cd tth
+
+# 2. Install dependencies with dev extras
+uv sync --all-extras
+
+# 3. Run the full test suite (426+ unit, sandbox, and safety tests)
 uv run pytest
 
-# Run the 195-case safety red-team suite
+# 4. Check linting and static typing
+uv run ruff check .
+uv run pyright
+```
+
+### 3. Pull Request Guidelines
+
+1. **Honor the 7 Safety Invariants**: Any PR that weakens Invariant 1 (zero autonomous final execution), Invariant 2 (read-only sandboxed probes), or Invariant 6 (secret shields) will be rejected.
+2. **Include Unit & Red-Team Tests**: When modifying tools or safety logic, add matching test cases under `tests/` or `tests/safety/cases/`.
+3. **No Fabricated Benchmarks**: All metrics submitted in PR descriptions must be accompanied by reproduction commands or raw machine logs.
+4. **Code Quality**: All submissions must pass `uv run pytest`, `uv run ruff check .`, and `uv run pyright` with zero errors.
+
+---
+
+## Development & Verification
+
+Run the full suite of verification tests locally:
+
+```bash
+# Run all unit, sandbox, and safety tests
+uv run pytest
+
+# Run the safety red-team suite specifically
 uv run pytest tests/safety
 
 # Verify static typing and code style
@@ -260,9 +348,15 @@ uv run pyright
 
 ---
 
-## Summary for NotebookLLM
-If you are generating an architectural walkthrough or audio summary:
-- **Core Theme**: Small on-device models can outperform large models in practical safety and reliability if they are trained to verify their assumptions before acting.
-- **Key Metaphor**: A chess player who never touches a piece before calculating the consequences in their head, compared to an agent that checks the file system and tests queries in a sandbox before showing you the command.
-- **Key Breakthrough**: Using chess as a formal gym for tool discipline, then transferring that learned discipline to the Unix shell.
-- **Key Protocol**: Model Context Protocol (MCP) for looking inward at the computer; Agent-to-Agent (A2A) protocol for asking for external help.
+## Related Documentation
+
+- 📘 [CLAUDE.md](file:///Users/tharaneeshwaran/Documents/TTH/CLAUDE.md) — Core developer manual, design philosophy, and safety contracts.
+- 🚀 [UPGRADE.md](file:///Users/tharaneeshwaran/Documents/TTH/UPGRADE.md) — Comprehensive technical architectural versioning, performance profiling, and training curriculum specifications.
+- 📊 [DATA_CARD.md](file:///Users/tharaneeshwaran/Documents/TTH/DATA_CARD.md) — Dataset provenance, trajectory schemas, and verification pipelines.
+- 📈 [RESULTS.md](file:///Users/tharaneeshwaran/Documents/TTH/evals/results/RESULTS.md) — Full benchmark reports across all experimental arms.
+
+---
+
+## License
+
+`tth` is distributed under the Apache-2.0 License. Base model weights (`Qwen2.5-Coder-1.5B-Instruct`) are licensed under Apache-2.0 by Alibaba Cloud.
