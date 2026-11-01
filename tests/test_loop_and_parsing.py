@@ -44,3 +44,24 @@ def test_bare_json_call_with_wrong_wrapper() -> None:
 
 def test_prose_is_not_a_call() -> None:
     assert parse_qwen('I would run {"cmd": "ls"} here').tool_calls == []
+
+
+def test_xml_function_call() -> None:
+    text = (
+        '<tools>\n'
+        '  <function name="stage">\n'
+        '    <arguments>\n'
+        '      <command>find . -name "*.py" -type f | wc -l</command>\n'
+        '      <explanation>Count Python files</explanation>\n'
+        '    </arguments>\n'
+        '  </function>\n'
+        '</tools>'
+    )
+    t = parse_qwen(text)
+    assert len(t.tool_calls) == 1
+    assert t.tool_calls[0].name == "stage"
+    assert t.tool_calls[0].args == {
+        "command": 'find . -name "*.py" -type f | wc -l',
+        "explanation": "Count Python files",
+    }
+

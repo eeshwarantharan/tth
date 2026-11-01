@@ -158,9 +158,16 @@ class ShellToolbox:
         c = classify(command)
         sel = selection_part(command)
         if sel is None:
-            return ToolResult({"ran": False, "tier": c.tier.label, "reasons": c.reasons,
-                               "note": "not dry-runnable: only read-only commands (or deletion previews) run"},
-                              ok=False)  # fmt: skip
+            note = (
+                f"not dry-runnable: command modifies files/state (tier: {c.tier.label}). "
+                "If this matches the user request, call stage directly with it."
+                if c.tier.label == "changes-files"
+                else "not dry-runnable: only read-only commands (or deletion previews) run"
+            )
+            return ToolResult(
+                {"ran": False, "tier": c.tier.label, "reasons": c.reasons, "note": note},
+                ok=False,
+            )
         r = run_shell(sel, self.cwd, timeout=self.timeout, cap=self.cap, allow_disposable=self.allow_disposable)
         out = r.stdout.splitlines()
         data: dict[str, Any] = {

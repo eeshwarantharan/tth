@@ -68,14 +68,23 @@ class MLXPolicy:
 
         sampler = make_sampler(temp=self.temperature, top_p=0.95 if self.temperature else 1.0)
         text, toks = "", []
-        for resp in stream_generate(self.model, self.tokenizer, prompt[k:],
-                                    max_tokens=self.max_tokens, sampler=sampler,
-                                    prompt_cache=self._cache):  # fmt: skip
+        for resp in stream_generate(
+            self.model,
+            self.tokenizer,
+            prompt[k:],
+            max_tokens=self.max_tokens,
+            sampler=sampler,
+            prompt_cache=self._cache,
+        ):
             text += resp.text
             toks.append(resp.token)
-            if "</tool_call>" in text:
+            if "</tool_call>" in text or "<|im_end|>" in text or "</tools>" in text:
                 break
-        self._cache_tokens = prompt + toks[:-1]
+            if text.count("```") >= 2 and "{" in text:
+                break
+            if "</function>" in text and ("</arguments>" in text or "<arguments>" not in text):
+                break
+        self._cache_tokens = prompt + toks
         if self._cache[0].offset != len(self._cache_tokens):
             self.reset()
         return parse_qwen(text)

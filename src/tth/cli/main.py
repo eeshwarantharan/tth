@@ -120,7 +120,8 @@ def escalate_flow(request: str, ep_messages: list, reason: str, cwd: Path, shell
     )
     for line in p.text.splitlines():
         err(f"  {DIM}│{RESET} {line}")
-    ans = "y" if assume_yes else _read_tty("  Send it? [y/N] ")
+    auto_yes = assume_yes or os.environ.get("TTH_AUTO_ESCALATE", "").lower() in ("1", "true", "yes") or os.environ.get("TTH_YES", "").lower() in ("1", "true", "yes")
+    ans = "y" if auto_yes else _read_tty("  Send it? [y/N] ")
     if ans.lower() not in ("y", "yes"):
         err(f"  {DIM}Not sent. Nothing staged (local-only).{RESET}")
         return 1

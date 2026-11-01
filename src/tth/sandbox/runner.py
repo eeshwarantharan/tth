@@ -20,7 +20,7 @@ from pathlib import Path
 
 from tth.safety.secrets import secret_dirs
 
-DEFAULT_TIMEOUT = 5.0
+DEFAULT_TIMEOUT = 8.0
 DEFAULT_CAP = 8 * 1024
 
 

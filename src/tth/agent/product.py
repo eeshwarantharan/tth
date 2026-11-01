@@ -24,6 +24,8 @@ class ProductEnv:
         self.decision: str | None = None
         self.reason: str = ""
         self.last_verified: str | None = None
+        self.last_candidate: str | None = None
+        self._failed_commands: dict[str, str] = {}  # command -> error message
 
     def reset(self) -> EpisodeStart:
         return EpisodeStart(system=SHELL_SYSTEM.format(os=os_label(), shell=self.box.shell), user=self.request,
@@ -31,12 +33,55 @@ class ProductEnv:
 
     def step(self, call: ToolCall) -> StepOutcome:
         if call.malformed:
+            staged = self._auto_stage_verified()
+            if staged:
+                return staged
             return StepOutcome({"error": f"could not parse tool call: {call.malformed}"}, ok=False)
+
+        # Detect duplicate dry_run
+        if call.name == "dry_run":
+            cmd = (call.args.get("command") or "").strip()
+            # If the model repeats a modifying command that wasn't dry-runnable, stage it!
+            if cmd and cmd == self.last_candidate:
+                staged = self._auto_stage_verified()
+                if staged:
+                    return staged
+            # If the model repeats a command that already failed, stop the loop immediately.
+            if cmd and cmd in self._failed_commands:
+                staged = self._auto_stage_verified()
+                if staged:
+                    return staged
+                self.decision = "escalate"
+                self.reason = f"command failed ({self._failed_commands[cmd]}) and local model cannot self-correct"
+                return StepOutcome(
+                    {"error": f"repeated failing command: {self._failed_commands[cmd]}", "escalated": True},
+                    ok=False,
+                    done=True,
+                    decision="escalate",
+                )
+
+        if call.name == "stage":
+            staged_cmd = call.args.get("command", "")
+            if self.last_verified and any(v in staged_cmd for v in ("$lines", "$count", "$output", "$result", "$sample", "$data")):
+                call.args["command"] = self.last_verified
+
         r = self.box.call(call.name, call.args)
-        if call.name == "dry_run" and r.ok and r.data.get("exit_code") == 0:
-            cmd = call.args.get("command") or r.data.get("ran")
-            if cmd:
+
+        # Track successful, candidate, and failed dry_runs.
+        if call.name == "dry_run":
+            cmd = call.args.get("command") or r.data.get("ran") or ""
+            if r.ok and r.data.get("exit_code") == 0:
                 self.last_verified = cmd
+                self._failed_commands.pop(cmd, None)
+            elif not r.ok and cmd:
+                # If command modifies files (changes-files tier), it is not a broken command;
+                # remember it as a valid candidate to stage!
+                if r.data.get("tier") in ("changes-files", "read-only") and "not dry-runnable" in str(r.data.get("note", "")):
+                    self.last_candidate = cmd
+                else:
+                    err_msg = r.data.get("error") or r.data.get("stderr", "failed")
+                    self._failed_commands[cmd] = str(err_msg)[:120]
+
         if r.decision:
             self.decision = r.decision
             if r.decision == "stage":
@@ -46,8 +91,10 @@ class ProductEnv:
         return StepOutcome(r.data, ok=r.ok)
 
     def _auto_stage_verified(self) -> StepOutcome | None:
-        if self.last_verified:
-            r = self.box.call("stage", {"command": self.last_verified, "explanation": "Verified locally via dry_run."})
+        target = self.last_verified or self.last_candidate
+        if target:
+            explanation = "Verified locally via dry_run." if target == self.last_verified else "Selected based on context."
+            r = self.box.call("stage", {"command": target, "explanation": explanation})
             if r.decision == "stage":
                 self.decision = "stage"
                 self.staged = r.data

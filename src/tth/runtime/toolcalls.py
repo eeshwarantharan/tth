@@ -29,6 +29,38 @@ def _bare_calls(text: str) -> list[ToolCall]:
     return out
 
 
+_FN_CALL = re.compile(
+    r"<function\s+name=[\"'](?P<name>[^\"']+)[\"'][^>]*>(?P<body>.*?)</function>",
+    re.DOTALL,
+)
+_ARGS_BLOCK = re.compile(r"<arguments>(?P<args>.*?)</arguments>", re.DOTALL)
+_TAG_PARAM = re.compile(r"<(?P<key>[a-zA-Z0-9_]+)>(?P<val>.*?)</(?P=key)>", re.DOTALL)
+
+
+def _xml_calls(text: str) -> list[ToolCall]:
+    out: list[ToolCall] = []
+    for m in _FN_CALL.finditer(text):
+        name = m.group("name")
+        body = m.group("body")
+        m_args = _ARGS_BLOCK.search(body)
+        args: dict[str, Any] = {}
+        if m_args:
+            raw_args = m_args.group("args").strip()
+            if raw_args.startswith("{") and raw_args.endswith("}"):
+                try:
+                    loaded = json.loads(raw_args)
+                    if isinstance(loaded, dict):
+                        args = loaded
+                except json.JSONDecodeError:
+                    pass
+            if not args:
+                for p in _TAG_PARAM.finditer(raw_args):
+                    args[p.group("key")] = p.group("val").strip()
+        if args:
+            out.append(ToolCall(name=name, args=args))
+    return out
+
+
 def parse_qwen(text: str) -> ModelTurn:
     calls: list[ToolCall] = []
     for m in _TOOL_CALL.finditer(text):
@@ -48,6 +80,10 @@ def parse_qwen(text: str) -> ModelTurn:
     if not calls:
         # A correct tool-call body with a missing/wrong wrapper tag still counts (applies to every arm alike).
         calls = _bare_calls(_JUNK_TAGS.sub("", text))
+        if calls:
+            content = ""
+    if not calls:
+        calls = _xml_calls(text)
         if calls:
             content = ""
     return ModelTurn(content=_JUNK_TAGS.sub("", content).strip(), tool_calls=calls, raw=text)
