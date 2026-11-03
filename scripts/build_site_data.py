@@ -24,7 +24,7 @@ from tth.safety.classifier import classify
 ROOT = Path(__file__).resolve().parents[1]
 
 OUT = ROOT / "site" / "data.js"
-RESULTS = ROOT / "evals" / "results"
+RESULTS = ROOT / "evals" / "results-v0.1"
 DIAGNOSTICS = ROOT / "evals" / "diagnostics" / "results"
 
 ARM_NAMES = {

@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from tth.agent.loop import run_batched
+from tth_gym.core.mcp_env import McpEnvironment
 
 
 def _domain(name: str) -> tuple[Any, Any, Any, Any]:
@@ -66,7 +67,11 @@ def main() -> None:
         for rnd in range(args.rounds):
             t0 = time.time()
             batch = rng.sample(tasks, args.tasks_per_round)
-            envs = [make_env(t, seed=rng.randrange(1 << 30), expert=expert) for t in batch for _ in range(args.group)]
+            envs = [
+                McpEnvironment(make_env(t, seed=rng.randrange(1 << 30), expert=expert))
+                for t in batch
+                for _ in range(args.group)
+            ]
             model.eval()
             model.config.use_cache = True
             policy = HFBatchPolicy(model, tok, temperature=args.temperature)

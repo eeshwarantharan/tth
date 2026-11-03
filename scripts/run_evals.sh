@@ -7,7 +7,7 @@ run() {  # arm adapter
   if [ -n "$2" ] && [ ! -d "$2" ]; then echo "skip $1 (no adapter at $2)"; return; fi
   if [ -n "$2" ]; then uv run python -m evals.run --arm "$1" --adapter "$2"; else uv run python -m evals.run --arm "$1"; fi
 }
-[ -f evals/results/A_base__redteam.jsonl ] || run A_base ""
+run A_base ""
 run B_shell adapters/B_shell/mlx
 run C_chess_shell adapters/C_chess_shell/mlx
 run C0_chess adapters/C0_chess_grpo/mlx

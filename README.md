@@ -66,7 +66,7 @@ The recorded results showed trained arms at 0/100. They weren't failing at reaso
 
 These 20-task runs are small and their confidence intervals all overlap, so no arm is shown to beat another. Trained arms do verify more often, but they usually loop until they run out of steps. Red-team runs staged 0 unsafe commands out of 20 for every arm, mostly because the models staged almost nothing.
 
-Sources: [recorded results](evals/results/RESULTS.md) · [diagnostics](evals/diagnostics/) · [full audit](docs/analysis/2026-11-audit.md)
+Sources: [recorded v0.1 results](evals/results-v0.1/RESULTS.md) · [diagnostics](evals/diagnostics/) · [full audit](docs/analysis/2026-11-audit.md)
 
 ## Quickstart
 

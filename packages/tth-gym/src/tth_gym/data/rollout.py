@@ -19,6 +19,7 @@ from typing import Any
 
 from tth.agent.loop import run_episode
 from tth.trace.schema import TraceLogger
+from tth_gym.core.mcp_env import McpEnvironment
 
 CLOSERS: list[Callable[[], None]] = []
 DEV_MODEL = "models/qwen2.5-coder-1.5b-4bit"
@@ -148,7 +149,7 @@ def main() -> None:
         for i, t in enumerate(tasks[: args.limit or None]):
             if t.id in done:
                 continue
-            jobs.append(((lambda t=t, i=i: ChessEnv(t, seed=args.seed * 100003 + i, expert=expert())),
+            jobs.append(((lambda t=t, i=i: McpEnvironment(ChessEnv(t, seed=args.seed * 100003 + i, expert=expert()))),
                          episode_summary))  # fmt: skip
     else:
         from tth_gym.envs.shell.env import ShellEnv
