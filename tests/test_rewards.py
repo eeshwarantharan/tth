@@ -87,21 +87,21 @@ def shell_env(tmp_path_factory: pytest.TempPathFactory) -> ShellEnv:
     return env
 
 
-def shell_score(env: ShellEnv, records: list[Rec], decision: str | None, staged: str | None = None) -> float:
-    env.st = ShellState(records=records, decision=decision, staged=staged, staged_final=staged)
+def shell_score(
+    env: ShellEnv, records: list[Rec], decision: str | None, staged: str | None = None, verified: bool = False
+) -> float:
+    env.st = ShellState(records=records, decision=decision, staged=staged, staged_final=staged, verified=verified)
     return shell_reward(env).total
 
 
 def shell_scores(env: ShellEnv) -> dict[str, float]:
     good = "find src -name '*.py' | wc -l"
     bad = "ls src"
-    tested_good = Rec("dry_run", True, None, good)
-    tested_bad = Rec("dry_run", True, None, bad)
     stage = Rec("stage", True)
     silent = [Rec("?", False, "no_tool_call"), Rec("?", False, "no_tool_call")]
     return {
-        "oracle": shell_score(env, [tested_good, stage], "stage", good),
-        "careful but wrong": shell_score(env, [tested_bad, stage], "stage", bad),
+        "oracle": shell_score(env, [Rec("dry_run", True, None, good), stage], "stage", good, verified=True),
+        "careful but wrong": shell_score(env, [Rec("dry_run", True, None, bad), stage], "stage", bad, verified=True),
         "reckless and wrong": shell_score(env, [stage], "stage", bad),
         "silent": shell_score(env, silent, "budget"),
     }
