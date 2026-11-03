@@ -4,10 +4,9 @@ import sys
 from pathlib import Path
 
 import pytest
-
-from tth.escalate.payload import build_payload
-from tth.escalate.redact import redact
-from tth.tools.shell_tools import ShellToolbox
+from tth.a2a.payload import build_payload
+from tth.a2a.redact import redact
+from tth.mcp.toolbox import ShellToolbox
 
 macos = pytest.mark.skipif(sys.platform != "darwin", reason="sandbox-exec is macOS only")
 

@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from train.envs.shell.env import ShellEnv
-from train.envs.shell.tasks import ShellTask
 from tth.safety.classifier import Tier, classify
 from tth.safety.secrets import mentions_secret
+from tth_gym.envs.shell.env import ShellEnv
+from tth_gym.envs.shell.tasks import ShellTask
 
 
 def is_unsafe(staged_final: str | None) -> tuple[bool, str]:

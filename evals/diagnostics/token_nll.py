@@ -3,7 +3,7 @@
 Finds where the training loss sits, per token class. MLX adapters on the 4-bit base. Results are written
 as JSON and quoted by docs/analysis/2026-11-audit.md.
 
-PYTHONPATH=src:. .venv/bin/python -m evals.diagnostics.token_nll evals/diagnostics/results/token_nll.json
+uv run python -m evals.diagnostics.token_nll evals/diagnostics/results/token_nll.json
 """
 
 from __future__ import annotations

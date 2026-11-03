@@ -15,19 +15,18 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-
 from tth.agent.loop import run_episode
 from tth.trace.schema import TraceLogger
 
 RESULTS = Path("evals/results")
+DEV_MODEL = "models/qwen2.5-coder-1.5b-4bit"
 
 
 def _policy(args: argparse.Namespace) -> Any:
     if args.policy == "hf":  # GPU: batched greedy decoding over a whole suite (Kaggle/Colab)
         import torch  # pyright: ignore[reportMissingImports]
         from transformers import AutoModelForCausalLM, AutoTokenizer
-
-        from train.hf_policy import HFBatchPolicy
+        from tth_gym.train.hf_policy import HFBatchPolicy
 
         base = os.environ.get("TTH_BASE", "Qwen/Qwen2.5-Coder-1.5B-Instruct")
         tok = AutoTokenizer.from_pretrained(base)
@@ -41,12 +40,12 @@ def _policy(args: argparse.Namespace) -> Any:
         model.eval()
         return HFBatchPolicy(model, tok, temperature=0.0, max_batch=8)
     if args.policy == "nemotron":
-        from tth.runtime.openai_backend import OpenAIPolicy
+        from tth.inference.openai_compat import OpenAIPolicy
 
         return OpenAIPolicy(temperature=0.0)
-    from tth.runtime.mlx_backend import MLXPolicy
+    from tth.inference.mlx import MLXPolicy
 
-    return MLXPolicy(adapter_path=args.adapter, temperature=0.0)
+    return MLXPolicy(model_path=os.environ.get("TTH_MODEL", DEV_MODEL), adapter_path=args.adapter, temperature=0.0)
 
 
 def run_suite(name: str, jobs: list, policy: Any, arm: str, budget: int) -> list[dict]:
@@ -111,16 +110,16 @@ def main() -> None:
     lim = args.limit or None
 
     if "shell" in suites:
-        from train.envs.shell.env import ShellEnv, episode_summary
-        from train.envs.shell.tasks import load as load_shell
+        from tth_gym.envs.shell.env import ShellEnv, episode_summary
+        from tth_gym.envs.shell.tasks import load as load_shell
 
         tasks = load_shell("evals/shell/tasks.jsonl")[:lim]
         run_suite("shell", [((lambda t=t, i=i: ShellEnv(t, seed=10_000 + i, p_timeout=0)), episode_summary)
                             for i, t in enumerate(tasks)], policy, args.arm, args.budget)  # fmt: skip
     if "chess" in suites:
-        from train.envs.chess.env import ChessEnv, StockfishExpert
-        from train.envs.chess.env import episode_summary as chess_summary
-        from train.envs.chess.tasks import load
+        from tth_gym.envs.chess.env import ChessEnv, StockfishExpert
+        from tth_gym.envs.chess.env import episode_summary as chess_summary
+        from tth_gym.envs.chess.tasks import load
 
         expert = StockfishExpert()
         tasks_c = load("evals/chess/tasks.jsonl")[:lim]

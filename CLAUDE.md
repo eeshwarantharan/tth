@@ -34,24 +34,15 @@ Never weaken these without explicit approval in the conversation. If a task seem
 ## Repository layout
 
 ```
-src/tth/
-  cli/          # entrypoint, shell integration (zsh buffer prefill; bash via bind -x)
-  agent/        # model ↔ tools loop, step budget, escalation policy
-  tools/        # MCP server exposing read-only shell probes
-  safety/       # parser, classifier (tiers), rewriter, red-team cases
-  sandbox/      # bwrap / sandbox-exec wrappers
-  escalate/     # A2A client, payload preview, redaction
-  runtime/      # llama.cpp (GGUF) and MLX backends
-  trace/        # unified trajectory schema + logger (shared by product and training)
-train/
-  envs/chess/   # chess environment: tasks, verifiers, schema randomizer, error injection
-  envs/shell/   # containerized shell tasks with execution-based checks
-  data/         # teacher trajectory generation + verification
-  sft/  grpo/   # training configs and scripts
-experts/        # A2A expert agents used in training and in the product
-evals/          # eval harness + task suites
-tests/
+packages/tth/src/tth/      # the product: pip install tth. See docs/ARCHITECTURE.md
+  cli/  expert/  agent/  a2a/  inference/  mcp/  sandbox/  safety/  trace/  core/
+packages/tth-gym/src/tth_gym/   # the RL gym and training
+  envs/  data/  train/
+evals/      # held-out suites, red-team requests, results, diagnostics. Never imported by tth or tth_gym
+experts live in tth.expert; tests/ holds everything; site/ is the project page
 ```
+
+Layers and one-way dependencies are enforced by `uv run lint-imports`.
 
 ## Stack
 
@@ -70,10 +61,12 @@ uv run pytest                    # all tests
 uv run pytest tests/safety       # safety suite (must always pass)
 uv run ruff check . && uv run ruff format .
 uv run pyright
+uv run lint-imports              # dependency rules
+make site                        # regenerate site/data.js
 make eval                        # full eval harness
 ```
 
-Before reporting any task as done: tests, lint and type check pass, and the safety suite passes.
+Before reporting any task as done: tests, lint, type check and dependency rules pass, and the safety suite passes.
 
 ## Core design
 

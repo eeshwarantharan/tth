@@ -6,8 +6,8 @@ import stat
 from pathlib import Path
 
 from tth.agent.product import ProductEnv
-from tth.agent.protocol import ToolCall
-from tth.tools.shell_tools import ShellToolbox
+from tth.core.types import ToolCall
+from tth.mcp.toolbox import ShellToolbox
 from tth.trace.schema import TraceLogger
 
 

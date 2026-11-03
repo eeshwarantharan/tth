@@ -1,0 +1,27 @@
+[project]
+name = "tth-gym"
+version = "0.1.0"
+description = "An RL gym and teacher-student training lab for small terminal agents. Software verifiers assign every reward."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+authors = [{ name = "Tharaneeshwaran V U" }]
+dependencies = ["tth[openai]"]
+
+[project.optional-dependencies]
+chess = ["python-chess>=1.999"]
+train = ["torch>=2.2", "transformers>=4.45", "peft>=0.11", "safetensors>=0.4"]
+
+[project.urls]
+Homepage = "https://eeshwarantharan.github.io/tth/"
+Repository = "https://github.com/eeshwarantharan/tth"
+
+[tool.uv.sources]
+tth = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tth_gym"]

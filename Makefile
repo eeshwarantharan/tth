@@ -1,10 +1,10 @@
-.PHONY: test lint eval report colab
+.PHONY: test lint eval report site
 
 test:
 	uv run pytest
 
 lint:
-	uv run ruff check . && uv run ruff format --check . && uv run pyright
+	uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run lint-imports
 
 eval:          ## run every arm on the held-out suites (needs adapters/ from Colab)
 	scripts/run_evals.sh
@@ -12,5 +12,5 @@ eval:          ## run every arm on the held-out suites (needs adapters/ from Col
 report:
 	uv run python -m evals.report
 
-colab:         ## bundle code + verified data for train/colab_tth.ipynb
-	scripts/pack_colab.sh
+site:          ## regenerate site/data.js from committed results
+	uv run python scripts/build_site_data.py

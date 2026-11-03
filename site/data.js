@@ -397,12 +397,12 @@ window.TTH = {
   {
    "phase": "2",
    "scope": "Restructure into tth and tth-gym",
-   "status": "Next"
+   "status": "Done"
   },
   {
    "phase": "3",
    "scope": "MCP and A2A at the core, grammar, llama.cpp, terminal UI",
-   "status": "Planned"
+   "status": "Next"
   },
   {
    "phase": "4",

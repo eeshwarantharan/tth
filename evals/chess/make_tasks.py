@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from train.envs.chess.tasks import generate, load, save
+from tth_gym.envs.chess.tasks import generate, load, save
 
 TRAIN_TASKS = "data/chess/tasks_train.jsonl"
 OUT = "evals/chess/tasks.jsonl"

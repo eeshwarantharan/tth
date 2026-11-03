@@ -8,7 +8,7 @@ from __future__ import annotations
 import statistics
 import sys
 
-from train.envs.shell.tasks import TEMPLATES, make_tasks, save
+from tth_gym.envs.shell.tasks import TEMPLATES, make_tasks, save
 
 OUT = "evals/shell/tasks.jsonl"
 

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import chess
-
-from train.envs.chess.env import ChessEnv, EnvConfig, reward
-from train.envs.chess.tasks import ChessTask
 from tth.agent.loop import run_episode
-from tth.agent.protocol import ModelTurn, ToolCall
+from tth.core.types import ModelTurn, ToolCall
+from tth_gym.envs.chess.env import ChessEnv, EnvConfig, reward
+from tth_gym.envs.chess.tasks import ChessTask
 
 MATE_FEN = "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1"  # Ra8#
 TASK = ChessTask("x", "mate1", MATE_FEN, "Find mate", "move", "a1a8", accept_moves=["a1a8"])

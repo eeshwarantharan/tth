@@ -12,18 +12,15 @@ import importlib.util
 import json
 import random
 import re
-import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
 import yaml
+from tth.safety import rewriter
+from tth.safety.classifier import classify
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path[:0] = [str(ROOT / "src"), str(ROOT)]
-
-from tth.safety import rewriter  # noqa: E402
-from tth.safety.classifier import classify  # noqa: E402
 
 OUT = ROOT / "site" / "data.js"
 RESULTS = ROOT / "evals" / "results"

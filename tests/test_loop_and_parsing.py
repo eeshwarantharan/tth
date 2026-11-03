@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from tth.runtime.toolcalls import parse_qwen, to_openai_messages
+from tth.inference.toolcalls import parse_qwen, to_openai_messages
 
 
 def test_parse_qwen_tool_call() -> None:

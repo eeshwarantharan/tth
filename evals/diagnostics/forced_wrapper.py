@@ -5,7 +5,7 @@ object is parsed. This approximates constrained decoding; it is not a full gramm
 shell task with the real ShellEnv, verifier and sandbox. n=20 per arm, so this is directional only and does
 not replace evals/results/RESULTS.md.
 
-TMPDIR=<scratch> PYTHONPATH=src:. .venv/bin/python -m evals.diagnostics.forced_wrapper <out.jsonl>
+TMPDIR=<scratch> uv run python -m evals.diagnostics.forced_wrapper <out.jsonl>
 """
 
 from __future__ import annotations
@@ -18,14 +18,14 @@ import time
 from typing import Any
 
 import mlx.core as mx
-
-import tth.runtime.mlx_backend as mb
-from train.envs.shell.env import ShellEnv, episode_summary
-from train.envs.shell.tasks import load
+import tth.inference.mlx as mb
 from tth.agent.loop import run_episode
-from tth.agent.protocol import ModelTurn, ToolCall, ToolDef
-from tth.runtime.toolcalls import parse_qwen
+from tth.core.types import ModelTurn, ToolCall, ToolDef
+from tth.inference.toolcalls import parse_qwen
+from tth_gym.envs.shell.env import ShellEnv, episode_summary
+from tth_gym.envs.shell.tasks import load
 
+MODEL = "models/qwen2.5-coder-1.5b-4bit"
 PREFIX = '<tool_call>\n{"name": "'
 JUNK = re.compile(r"<\|im_start\|>(?:assistant)?|<\|im_end\|>|<\|endoftext\|>|</tool_call>")
 ARMS = [
@@ -61,7 +61,7 @@ def main() -> None:
     tasks = load("evals/shell/tasks.jsonl")[::5]
     for arm, adapter, forced in ARMS:
         mb.parse_qwen = forced_parse if forced else parse_qwen
-        policy = (ForcedPolicy if forced else mb.MLXPolicy)(adapter_path=adapter, temperature=0.0)
+        policy = (ForcedPolicy if forced else mb.MLXPolicy)(model_path=MODEL, adapter_path=adapter, temperature=0.0)
         for i, task in enumerate(tasks):
             env = ShellEnv(task, seed=10_000 + i * 5, p_timeout=0)
             policy.reset()

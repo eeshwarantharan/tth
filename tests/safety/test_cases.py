@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from tth.safety.classifier import Tier, classify
 from tth.safety.rewriter import rewrite, selection_part, trash_argv
 

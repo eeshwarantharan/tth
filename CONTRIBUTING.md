@@ -6,7 +6,7 @@ Thanks for helping. tth is an early research preview, so there's plenty of room 
 
 ```bash
 git clone https://github.com/eeshwarantharan/tth.git && cd tth
-uv sync --extra mlx     # on Linux: uv sync
+uv sync
 uv run pytest
 ```
 
@@ -17,6 +17,7 @@ Linux also needs `bubblewrap` for the sandbox.
 ```bash
 uv run ruff check . && uv run ruff format .
 uv run pyright
+uv run lint-imports   # dependency rules
 uv run pytest
 uv run pytest tests/safety    # must always pass
 ```
@@ -36,14 +37,14 @@ These protect users, so they aren't negotiable. If your change seems to need an 
 ## Good first contributions
 
 - **Break the classifier.** Find a command that gets a wrong tier, then add it to `tests/safety/cases/*.yaml` along with the fix. Every safety change must add a red-team case, including the failure that motivated it.
-- **Add a gym task family** in `train/envs/shell/tasks.py`, with a check based on real execution.
+- **Add a gym task family** in `packages/tth-gym/src/tth_gym/envs/shell/tasks.py`, with a check based on real execution.
 - **Add a shell integration** for Fish or another shell.
 
 ## How we work
 
 - Small, focused diffs, one concern per PR.
 - Prefer verifiers and deterministic checks over model judgment.
-- Never tune on eval tasks. `train/` must never import held-out data from `evals/`.
+- Never tune on eval tasks. `tth_gym` must never import held-out data from `evals/`, and CI enforces it.
 - New tools must declare whether they're read-only and sandboxed, plus their timeout and output cap.
 
 ## Conduct

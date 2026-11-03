@@ -5,9 +5,8 @@ from __future__ import annotations
 import json
 
 import pytest
-
-from tth.escalate.payload import MAX_RESULT_CHARS, build_payload
-from tth.escalate.redact import redact
+from tth.a2a.payload import MAX_RESULT_CHARS, build_payload
+from tth.a2a.redact import redact
 
 SECRET = "hunter2"
 

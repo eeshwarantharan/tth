@@ -49,7 +49,7 @@ find src -name '*.py' | wc -l
 | A2A | Basic escalation works, full task lifecycle planned (Phase 3) |
 | Trained model | **None worth shipping.** No trained arm has beaten the untrained base |
 | llama.cpp backend | Only through an OpenAI-compatible server you run yourself (Phase 3) |
-| `pip install tth` | Not published. Install from source |
+| `pip install tth` | Wheel builds and works from a clean install on macOS. Not published to PyPI yet |
 
 ## Results so far
 
@@ -74,12 +74,12 @@ macOS on Apple Silicon. This uses the **untrained base model**, so expect mistak
 
 ```bash
 git clone https://github.com/eeshwarantharan/tth.git && cd tth
-uv sync --extra mlx
+uv sync
 
 # Download the 4-bit model (839 MB on disk)
-uv run python -c "from huggingface_hub import snapshot_download as d; d('mlx-community/Qwen2.5-Coder-1.5B-Instruct-4bit', local_dir='models/qwen2.5-coder-1.5b-4bit')"
+uv run hf download mlx-community/Qwen2.5-Coder-1.5B-Instruct-4bit --local-dir ~/.local/share/tth/models/qwen2.5-coder-1.5b-4bit
 
-uv run tth setup   # checks the sandbox and model
+uv run tth setup   # checks the sandbox, model and backend
 
 echo "export PATH=\"$PWD/.venv/bin:\$PATH\"" >> ~/.zshrc
 echo 'eval "$(tth init zsh)"' >> ~/.zshrc && exec zsh
@@ -87,7 +87,9 @@ echo 'eval "$(tth init zsh)"' >> ~/.zshrc && exec zsh
 
 Then use `t <request>`, or type a request and press Ctrl-G.
 
-On Linux, install `bubblewrap`, use `tth init bash`, and run a model behind an OpenAI-compatible server (for example `llama-server`) with `--backend openai`. To try escalation, copy [`.env.example`](.env.example) to `.env` and add a key.
+On Linux, install `bubblewrap`, use `tth init bash`, and run a model behind an OpenAI-compatible server (for example `llama-server`) with `--backend openai`.
+
+To try escalation, copy [`.env.example`](.env.example) to `~/.config/tth/.env` and add a key. tth never reads a project's own `.env`.
 
 ## How it works
 
@@ -113,15 +115,16 @@ On Linux, install `bubblewrap`, use `tth init bash`, and run a model behind an O
 ## Repository layout
 
 ```
-src/tth/     the product: CLI, agent loop, tools, safety, sandbox, escalation, runtimes, traces
-train/       gym environments (chess, shell, table), teacher data, SFT and GRPO
-evals/       held-out suites, red-team requests, recorded results, diagnostics
-experts/     A2A expert agent
-site/        project page, generated from committed results
-data/        verified training trajectories
-docs/        roadmap, audit, history
-tests/       test suite, including the safety red team
+packages/tth/       the product: CLI, agent, MCP tools, A2A escalation, safety, sandbox, inference, traces
+packages/tth-gym/   the gym: chess, shell and table environments, teacher data, training
+evals/              held-out suites, red-team requests, recorded results, diagnostics
+data/               verified training trajectories
+site/               project page, generated from committed results
+docs/               architecture, roadmap, audit, history
+tests/              test suite, including the safety red team
 ```
+
+Start with [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). It has a table of where to look for each kind of change.
 
 ## Contributing
 

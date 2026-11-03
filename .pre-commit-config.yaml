@@ -16,4 +16,4 @@ repos:
         entry: uv run pytest tests/safety -q
         language: system
         pass_filenames: false
-        files: ^(src/tth/safety/|tests/safety/)
+        files: ^(packages/tth/src/tth/safety/|tests/safety/)
