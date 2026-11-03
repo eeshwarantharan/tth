@@ -7,9 +7,11 @@ CLI helper that starts the expert server. Nothing else in the tth package may sp
 from __future__ import annotations
 
 import ast
+from argparse import Namespace
 from pathlib import Path
 
-from tth.cli.main import stage_output
+from tth.cli.main import finish
+from tth.ui.terminal import Outcome
 
 SRC = Path(__file__).resolve().parents[1] / "packages" / "tth" / "src" / "tth"
 SPAWN = {("subprocess", "run"), ("subprocess", "Popen"), ("subprocess", "call"), ("subprocess", "check_call"),
@@ -48,7 +50,8 @@ def test_stage_writes_never_runs(tmp_path: Path) -> None:
     victim = tmp_path / "keep.txt"
     victim.write_text("x")
     out = tmp_path / "out"
-    stage_output(f"trash {victim}", "changes-files", [], str(out), "test")
+    outcome = Outcome("stage", f"trash {victim}", "changes-files")
+    assert finish(outcome, Namespace(out=str(out), json=False)) == 0
     assert out.read_text() == f"trash {victim}"
     assert victim.exists()
 

@@ -24,6 +24,7 @@ class TraceEvent(BaseModel):
     ok: bool = True
     decision: str | None = None  # stage | escalate | ask | answer | impossible | budget
     reward: float | None = None
+    raw: str | None = None  # exactly what the model wrote this turn, before any parsing
     ts: float = Field(default_factory=time.time)
     meta: dict[str, Any] = Field(default_factory=dict)
 

@@ -14,7 +14,7 @@ Each layer may only import the layers below it.
 
 ```
 cli                        the commands
-expert                     reference A2A expert server (optional)
+expert | ui | shell        A2A expert server | what the user sees | shell widgets
 agent                      the model-to-tools loop, the session, decisions
 a2a | inference | mcp      asking for help | running a model | reaching tools
 sandbox                    the read-only, offline jail for probes
@@ -52,9 +52,11 @@ trace | core               trace format | shared types and config
 ## Debugging
 
 - `tth setup` checks the sandbox, the model and the backend.
-- Every run appends to the trace file, in one JSONL format shared by the product, training and evals.
+- `tth why` explains the last result. `tth why --raw` also shows exactly what the model wrote.
+- `tth replay FILE` draws a recorded episode with no model, using the same code that draws a live run.
+- Every run appends to the trace file, in one JSONL format shared by the product, training and evals. Each model turn records its raw text, because the lack of it hid a training bug in v0.1.
 - `evals/diagnostics/` holds small, reproducible experiments, such as measuring where training loss sits per token.
 
 ## What's changing
 
-[Phase 3 of the roadmap](ROADMAP.md) makes the agent a real MCP client, rebuilds escalation on the full A2A task lifecycle, and adds raw model output to traces. Today the agent calls `mcp/toolbox.py` directly, and A2A carries one text message.
+[Phase 3 of the roadmap](ROADMAP.md) makes the agent a real MCP client and rebuilds escalation on the full A2A task lifecycle. Today the agent calls `mcp/toolbox.py` directly, and A2A carries one text message.

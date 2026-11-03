@@ -7,6 +7,7 @@ per step) for fast rollouts on a GPU.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import uuid
 from collections.abc import Callable, Sequence
@@ -57,6 +58,12 @@ class EpisodeRunner:
             tools=[t.openai() for t in start.tools],
             meta=dict(start.meta),
         )
+        system_hash = hashlib.sha256((start.system + json.dumps(self.ep.tools, sort_keys=True)).encode()).hexdigest()[
+            :12
+        ]
+        self._emit(TraceEvent(episode=self.ep.id, domain=env.domain, step=0, meta={
+            "kind": "start", "request": start.user, "tools": [t.name for t in start.tools], "system_hash": system_hash,
+        }))  # fmt: skip
         self.step = 0
         self.calls = 0
         self.turns = 0
@@ -92,7 +99,7 @@ class EpisodeRunner:
             ep.messages.append({"role": "assistant", "content": turn.content})
             out = env.on_text(turn.content)
             self._emit(TraceEvent(episode=ep.id, domain=env.domain, step=self.step, result=turn.content[:2000],
-                                  ok=out.ok, decision=out.decision))  # fmt: skip
+                                  ok=out.ok, decision=out.decision, raw=turn.raw))  # fmt: skip
             self.step += 1
             if out.done:
                 self._end(out)
@@ -116,7 +123,7 @@ class EpisodeRunner:
                                 "content": _result_text(out.result)})  # fmt: skip
             self._emit(TraceEvent(episode=ep.id, domain=env.domain, step=self.step,
                                   call=Call(tool=call.name, args=call.args), result=out.result, ok=out.ok,
-                                  decision=out.decision))  # fmt: skip
+                                  decision=out.decision, raw=turn.raw))  # fmt: skip
             self.step += 1
             if out.done:
                 self._end(out)

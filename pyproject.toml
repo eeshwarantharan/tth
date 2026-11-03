@@ -56,7 +56,7 @@ name = "tth is layered"
 type = "layers"
 layers = [
   "tth.cli",
-  "tth.expert",
+  "tth.expert | tth.ui | tth.shell",
   "tth.agent",
   "tth.a2a | tth.inference | tth.mcp",
   "tth.sandbox",

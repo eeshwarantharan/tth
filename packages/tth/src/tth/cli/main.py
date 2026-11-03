@@ -1,10 +1,12 @@
 """tth command line.
 
-  tth run "<request>" [--out FILE]   inspect, verify, then stage a command
-  tth init zsh|bash                  print shell integration (Ctrl-G and `t`)
-  tth expert                         run the reference A2A expert agent
-  tth mcp                            run the read-only probe tools as an MCP server
-  tth setup                          check the install
+  tth "<request>"              inspect, verify, then stage a command
+  tth why [--raw]              explain the last result, from its trace
+  tth replay FILE [--raw]      show a recorded episode without a model
+  tth init zsh|bash            print shell integration (Ctrl-G and `t`)
+  tth setup                    check the sandbox, model and backend
+  tth expert                   run the reference A2A expert agent
+  tth mcp                      serve the read-only probes over MCP
 
 tth never executes the final command: `run` writes it to --out (the shell
 integration puts it on your prompt) or prints it.
@@ -17,52 +19,14 @@ import json
 import os
 import sys
 import time
+from dataclasses import asdict
 from pathlib import Path
 
 from tth.core.config import Config, ConfigError, find_model, load_config, load_user_env, model_candidates, state_dir
-from tth.trace.schema import TraceEvent, TraceLogger
+from tth.trace.schema import TraceEvent, TraceLogger, read_trace
+from tth.ui.terminal import Outcome, Style, TerminalRenderer, err
 
-GREEN, YELLOW, RED, DIM, BOLD, RESET = (
-    "\033[32m",
-    "\033[33m",
-    "\033[31m",
-    "\033[2m",
-    "\033[1m",
-    "\033[0m",
-)
-BADGE = {"read-only": (GREEN, "read-only"), "changes-files": (YELLOW, "changes files"),
-         "needs-review": (RED, "needs review")}  # fmt: skip
-
-
-def err(s: str = "") -> None:
-    print(s, file=sys.stderr, flush=True)
-
-
-def _summarize_result(ev: TraceEvent) -> str:
-    r = ev.result
-    if isinstance(r, dict):
-        if "error" in r:
-            return f"{RED}error{RESET} {str(r['error'])[:80]}"
-        if "exit_code" in r and "lines" in r:
-            return f"exit {r['exit_code']}, {r['lines']} lines" + (f" {DIM}(preview){RESET}" if r.get("note") else "")
-        if "columns" in r:
-            return "columns: " + ", ".join(r["columns"])[:80]
-        if "keys" in r and r.get("keys"):
-            return "keys: " + ", ".join(map(str, r["keys"]))[:80]
-        if "listing" in r:
-            return f"{len(r['listing'])} entries in {r.get('cwd')}"
-        if r.get("staged") is False:
-            return f"{RED}refused{RESET} {'; '.join(r.get('notes', []))[:80]}"
-    return str(r)[:80].replace("\n", " ")
-
-
-def log_row(ev: TraceEvent) -> None:
-    if ev.call is None:
-        return
-    args = ev.call.args
-    arg = args.get("command") or args.get("path") or args.get("reason") or args.get("question") or ""
-    mark = f"{GREEN}✓{RESET}" if ev.ok else f"{RED}✗{RESET}"
-    err(f"  {mark} {BOLD}{ev.call.tool:<15}{RESET} {DIM}{str(arg)[:60]}{RESET}  → {_summarize_result(ev)}")
+ui = TerminalRenderer()
 
 
 def _read_tty(prompt: str) -> str:
@@ -93,33 +57,32 @@ def _start_expert() -> bool:
     return False
 
 
-def stage_output(cmd: str, tier: str, notes: list[str], out: str | None, source: str) -> int:
-    color, label = BADGE.get(tier, (RED, tier))
-    err()
-    err(f"  {color}{BOLD}[{label}]{RESET} {BOLD}{cmd}{RESET}  {DIM}({source}){RESET}")
-    for n in notes:
-        err(f"  {DIM}note: {n}{RESET}")
-    if out:
-        Path(out).write_text(cmd)  # the shell widget puts this on the prompt; we never run it
-    else:
-        print(cmd)
-    return 0
+def finish(outcome: Outcome, args: argparse.Namespace) -> int:
+    """Report how the request ended. The command is written out for the shell, and never run here."""
+    ui.outcome(outcome)
+    if outcome.decision == "stage" and outcome.command:
+        if args.out:
+            Path(args.out).write_text(outcome.command)
+        elif not args.json:
+            print(outcome.command)
+    if args.json:
+        print(json.dumps({**asdict(outcome), "badge": outcome.badge if outcome.decision == "stage" else None}))
+    return 0 if outcome.decision == "stage" else 1
 
 
-def escalate_flow(request: str, ep_messages: list, reason: str, cwd: Path, shell: str, out: str | None,
-                  assume_yes: bool) -> int:  # fmt: skip
+def escalate_flow(request: str, ep_messages: list, reason: str, cwd: Path, shell: str, assume_yes: bool) -> Outcome:
     from tth.a2a.client import ask_expert, expert_reachable
     from tth.a2a.payload import build_payload
     from tth.agent.product import os_label
-    from tth.safety.rewriter import rewrite
+    from tth.mcp.toolbox import ShellToolbox
+    from tth.safety.rewriter import rewrite, selection_part
 
+    s = ui.s
     p = build_payload(request, ep_messages, reason, os_label(), shell)
-    err(f"\n  {YELLOW}{BOLD}can't verify locally → escalate?{RESET}  {DIM}{reason}{RESET}")
-    err(
-        f"  {DIM}This exact text would be sent to the expert agent (redacted: {', '.join(p.redactions) or 'nothing'}):{RESET}"
-    )
+    err(f"\n  {s.yellow}{s.bold}can't verify this locally. Ask the expert agent?{s.reset}  {s.dim}{reason}{s.reset}")
+    err(f"  {s.dim}This exact text would be sent (redacted: {', '.join(p.redactions) or 'nothing'}):{s.reset}")
     for line in p.text.splitlines():
-        err(f"  {DIM}│{RESET} {line}")
+        err(f"  {s.dim}│{s.reset} {line}")
     auto_yes = (
         assume_yes
         or os.environ.get("TTH_AUTO_ESCALATE", "").lower() in ("1", "true", "yes")
@@ -127,34 +90,29 @@ def escalate_flow(request: str, ep_messages: list, reason: str, cwd: Path, shell
     )
     ans = "y" if auto_yes else _read_tty("  Send it? [y/N] ")
     if ans.lower() not in ("y", "yes"):
-        err(f"  {DIM}Not sent. Nothing staged (local-only).{RESET}")
-        return 1
+        return Outcome("declined", message="Not sent. Nothing staged.")
     if not expert_reachable() and not _start_expert():
-        err(f"  {RED}expert agent not reachable; start it with: tth expert{RESET}")
-        return 1
+        return Outcome("failed", message=f"{s.red}The expert agent isn't reachable.{s.reset} Start it with: tth expert")
     a = ask_expert(p.text)
     if not a.command:
-        err(f"  expert: {a.explanation}")
-        return 1
+        return Outcome("failed", message=f"The expert didn't give a command: {a.explanation}")
     rw = rewrite(a.command, cwd=cwd)
     if rw.staged is None:
-        err(f"  {RED}expert's command refused by the safety layer:{RESET} {a.command}")
-        for n in rw.notes:
-            err(f"  {DIM}{n}{RESET}")
-        return 1
-    err(f"  {DIM}expert: {a.explanation}{RESET}")
+        notes = "; ".join(rw.notes)
+        return Outcome(
+            "failed", message=f"{s.red}The safety layer refused the expert's command:{s.reset} {a.command} ({notes})"
+        )
+    err(f"  {s.dim}expert: {a.explanation}{s.reset}")
     # Verify the expert's answer the same way as a local one: dry-run its read/selection part.
-    from tth.mcp.toolbox import ShellToolbox
-    from tth.safety.rewriter import selection_part
-
-    source = "from expert, unverified locally"
+    verified = False
     if selection_part(a.command) is not None:
         r = ShellToolbox(cwd, shell=shell).call("dry_run", {"command": a.command})  # noqa: S604
-        sample = (r.data.get("sample") or [""])[0]
-        err(f"  {GREEN if r.ok else RED}{'✓' if r.ok else '✗'}{RESET} {BOLD}{'dry_run':<15}{RESET} "
-            f"{DIM}expert command{RESET}  → exit {r.data.get('exit_code')}, {r.data.get('lines', 0)} lines {DIM}{sample[:60]}{RESET}")  # fmt: skip
-        source = "from expert, dry-run ok" if r.ok else "from expert, dry-run FAILED — review it"
-    return stage_output(rw.staged, rw.tier.label, rw.notes, out, source)
+        verified = r.ok
+        from tth.trace.schema import Call
+
+        ui.event(TraceEvent(episode="expert", domain="shell", step=0, call=Call(tool="dry_run", args={"command": a.command}),
+                            result=r.data, ok=r.ok))  # fmt: skip
+    return Outcome("stage", rw.staged, rw.tier.label, rw.notes, origin="expert", verified=verified)
 
 
 def _make_policy(args: argparse.Namespace, config: Config) -> object | None:
@@ -162,20 +120,20 @@ def _make_policy(args: argparse.Namespace, config: Config) -> object | None:
     if args.backend == "mlx":
         model = find_model(config)
         if model is None:
-            err(f"{RED}No model found.{RESET} Looked in: {', '.join(str(p) for p in model_candidates(config))}")
-            err("Run `tth setup` for how to get one.")
+            looked = ", ".join(str(p) for p in model_candidates(config))
+            ui.problem("No model found.", f"Looked in: {looked}. Run `tth setup` for how to get one.")
             return None
         try:
             from tth.inference.mlx import MLXPolicy
 
             return MLXPolicy(model_path=str(model), adapter_path=args.adapter or config.adapter)
         except ImportError:
-            err(f"{RED}The MLX backend isn't installed.{RESET} On Apple Silicon: pip install 'tth[mlx]'")
+            ui.problem("The MLX backend isn't installed.", "On Apple Silicon: pip install 'tth[mlx]'")
             return None
     try:
         from tth.inference.openai_compat import OpenAIPolicy
     except ImportError:
-        err(f"{RED}The OpenAI-compatible backend isn't installed.{RESET} Run: pip install 'tth[openai]'")
+        ui.problem("The OpenAI-compatible backend isn't installed.", "Run: pip install 'tth[openai]'")
         return None
     return OpenAIPolicy(model=args.model, base_url=args.base_url or config.base_url, api_key="local", thinking=False,
                         temperature=0.0, max_tokens=512)  # fmt: skip
@@ -189,65 +147,82 @@ def cmd_run(args: argparse.Namespace) -> int:
     config = load_config()
     request = " ".join(args.request).strip()
     if not request:
-        err('usage: tth run "<request>"')
+        err('usage: tth "<request>"')
         return 2
     cwd = Path.cwd()
     shell = Path(os.environ.get("SHELL", "/bin/zsh")).name
     args.backend = args.backend or config.backend
-    err(f"{DIM}tth ▸ {request}{RESET}")
+    ui.request(request)
     policy = _make_policy(args, config)
     if policy is None:
         return 1
     env = ProductEnv(request, cwd, shell)
     logger = TraceLogger(state_dir() / "traces.jsonl")
     budget = args.budget or config.budget
-    ep = run_episode(env, policy, budget=budget, logger=logger, on_event=log_row)  # type: ignore[arg-type]
+    ep = run_episode(env, policy, budget=budget, logger=logger, on_event=ui.event)  # type: ignore[arg-type]
     if env.decision == "stage" and env.staged:
-        source = "verified locally" if env.verified else "not verified, read it carefully"
-        return stage_output(env.staged["command"], env.staged["tier"], env.staged.get("notes", []), args.out, source)
+        staged = env.staged
+        return finish(
+            Outcome("stage", staged["command"], staged["tier"], staged.get("notes", []), verified=env.verified), args
+        )
     if env.decision == "ask":
-        err(f"\n  {BOLD}tth asks:{RESET} {env.reason}")
+        return finish(Outcome("ask", message=f"{ui.s.bold}tth asks:{ui.s.reset} {env.reason}"), args)
+    outcome = escalate_flow(request, ep.messages, env.reason or "could not verify locally", cwd, shell, args.yes)
+    return finish(outcome, args)
+
+
+def show_episode(events: list[TraceEvent], raw: bool) -> None:
+    """Draw a recorded episode with the same code that drew it live."""
+    style = Style()
+    start = next((e for e in events if e.meta.get("kind") == "start"), None)
+    if start:
+        err(f"{style.dim}tth ▸ {start.meta.get('request', '')}{style.reset}")
+    from tth.ui.terminal import describe
+
+    for ev in events:
+        line = describe(ev, style)
+        if line:
+            err(line)
+        if raw and ev.raw is not None:
+            err(f"    {style.dim}model wrote: {ev.raw!r}{style.reset}")
+        if ev.decision:
+            err(f"  {style.dim}ended: {ev.decision}{style.reset}")
+
+
+def _last_episode(events: list[TraceEvent]) -> list[TraceEvent]:
+    return [e for e in events if e.episode == events[-1].episode] if events else []
+
+
+def cmd_why(args: argparse.Namespace) -> int:
+    path = state_dir() / "traces.jsonl"
+    events = read_trace(path) if path.exists() else []
+    if not events:
+        ui.problem("No runs yet.", 'Try: tth "list python files"')
         return 1
-    return escalate_flow(request, ep.messages, env.reason or "could not verify locally", cwd, shell, args.out,
-                         args.yes)  # fmt: skip
+    show_episode(_last_episode(events), args.raw)
+    return 0
 
 
-ZSH = r"""# tth shell integration (zsh). Type a request, press Ctrl-G: the command lands on your prompt.
-_tth_widget() {
-  local req="$BUFFER" out
-  [[ -z "$req" ]] && return
-  out=$(mktemp -t tth.XXXXXX) || return
-  zle -I
-  command tth run --out "$out" -- "$req" </dev/tty >/dev/tty 2>&1
-  if [[ -s "$out" ]]; then BUFFER="$(<"$out")"; CURSOR=${#BUFFER}; fi
-  rm -f "$out"
-  zle reset-prompt
-}
-zle -N _tth_widget
-bindkey '^G' _tth_widget
-# Or: t <request>  -> the command appears on your next prompt (print -z), never executed.
-t() {
-  local out c; out=$(mktemp -t tth.XXXXXX) || return
-  command tth run --out "$out" -- "$*"
-  c="$(<"$out")"; rm -f "$out"
-  [[ -n "$c" ]] && print -z -- "$c"
-}
-"""
-
-BASH = r"""# tth shell integration (bash). Type a request, press Ctrl-G: the line is replaced by the command.
-_tth_readline() {
-  local req="$READLINE_LINE" out
-  [[ -z "$req" ]] && return
-  out=$(mktemp -t tth.XXXXXX) || return
-  command tth run --out "$out" -- "$req" </dev/tty >/dev/tty 2>&1
-  if [[ -s "$out" ]]; then READLINE_LINE="$(<"$out")"; READLINE_POINT=${#READLINE_LINE}; fi
-  rm -f "$out"
-}
-bind -x '"\C-g": _tth_readline'
-"""
+def cmd_replay(args: argparse.Namespace) -> int:
+    path = Path(args.file)
+    if not path.exists():
+        ui.problem(f"{path} doesn't exist.")
+        return 1
+    events = read_trace(path)
+    if args.episode:
+        events = [e for e in events if e.episode == args.episode]
+    else:
+        events = _last_episode(events)
+    if not events:
+        ui.problem("No matching episode in that file.")
+        return 1
+    show_episode(events, args.raw)
+    return 0
 
 
 def cmd_init(args: argparse.Namespace) -> int:
+    from tth.shell.integration import BASH, ZSH
+
     print(ZSH if args.shell == "zsh" else BASH)
     return 0
 
@@ -291,7 +266,7 @@ def cmd_expert(args: argparse.Namespace) -> int:
     try:
         from tth.expert.server import main as expert_main
     except ImportError:
-        err(f"{RED}The expert server isn't installed.{RESET} Run: pip install 'tth[expert]'")
+        ui.problem("The expert server isn't installed.", "Run: pip install 'tth[expert]'")
         return 1
     expert_main()
     return 0
@@ -317,6 +292,7 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--model", default="local")
     r.add_argument("--budget", type=int, default=None)
     r.add_argument("--yes", action="store_true", help="auto-approve escalation (for recorded runs only)")
+    r.add_argument("--json", action="store_true", help="print the outcome as JSON")
     r.set_defaults(fn=cmd_run)
     i = sub.add_parser("init", help="print shell integration")
     i.add_argument("shell", choices=["zsh", "bash"])
@@ -324,9 +300,17 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("setup", help="check the install").set_defaults(fn=cmd_setup)
     sub.add_parser("expert", help="run the reference A2A expert").set_defaults(fn=cmd_expert)
     sub.add_parser("mcp", help="serve read-only probes over MCP (stdio)").set_defaults(fn=cmd_mcp)
-    KNOWN = {"run", "init", "setup", "expert", "mcp"}
+    w = sub.add_parser("why", help="explain the last result")
+    w.add_argument("--raw", action="store_true", help="also show exactly what the model wrote")
+    w.set_defaults(fn=cmd_why)
+    p = sub.add_parser("replay", help="show a recorded episode, without a model")
+    p.add_argument("file")
+    p.add_argument("--episode", help="episode id (default: the last in the file)")
+    p.add_argument("--raw", action="store_true", help="also show exactly what the model wrote")
+    p.set_defaults(fn=cmd_replay)
     raw_args = list(sys.argv[1:] if argv is None else argv)
-    if raw_args and not any(a in KNOWN for a in raw_args) and not any(a in ("-h", "--help") for a in raw_args):
+    # Only the first word selects a subcommand, so `tth how do I init git` is a request.
+    if raw_args and raw_args[0] not in sub.choices and raw_args[0] not in ("-h", "--help"):
         raw_args = ["run"] + raw_args
     args = ap.parse_args(raw_args)
     if not getattr(args, "fn", None):
@@ -337,14 +321,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return int(args.fn(args))
     except ConfigError as e:
-        err(f"{RED}Config problem:{RESET} {e}")
+        ui.problem("Config problem:", str(e))
     except SandboxUnavailable as e:
-        err(f"{RED}The sandbox isn't available:{RESET} {e}. tth won't probe without it.")
+        ui.problem("The sandbox isn't available:", f"{e}. tth won't probe without it.")
     return 1
-
-
-def _json(x: object) -> str:
-    return json.dumps(x)
 
 
 if __name__ == "__main__":
