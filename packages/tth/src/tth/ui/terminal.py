@@ -72,6 +72,10 @@ def describe(ev: TraceEvent, s: Style) -> str | None:
     """One line for one event, or None if there's nothing the user needs to see."""
     if ev.meta.get("kind") == "start":
         return None
+    if ev.meta.get("source") == "gate" and ev.decision == "stage":
+        return f"  {s.dim}⋯ taking the command it tested{s.reset}"
+    if ev.meta.get("source") == "gate" and ev.decision == "escalate":
+        return f"  {s.red}✗{s.reset} {s.dim}it repeated a failing command, so it needs help{s.reset}"
     if ev.call is None:
         if isinstance(ev.result, dict):
             return None

@@ -110,7 +110,7 @@ def test_run_writes_the_command_and_never_runs_it(
     monkeypatch.chdir(tmp_path)
     out = tmp_path / "out.txt"
     marker = tmp_path / "was_run"
-    _patch_policy(monkeypatch, call("stage", command=f"touch {marker}", explanation="x"))
+    _patch_policy(monkeypatch, call("inspect_context"), call("stage", command=f"touch {marker}", explanation="x"))
     assert cli.main(["run", "--out", str(out), "--", "make", "a", "file"]) == 0
     assert out.read_text() == f"touch {marker}"
     assert not marker.exists()
@@ -121,12 +121,13 @@ def test_json_mode_reports_the_outcome(
     tmp_path: Path, traces: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     monkeypatch.chdir(tmp_path)
+    (tmp_path / "a.txt").write_text("x\n")
     _patch_policy(monkeypatch, call("stage", command="ls", explanation="x"))
     assert cli.main(["run", "--json", "--", "list"]) == 0
     result = json.loads(capsys.readouterr().out)
     assert result["decision"] == "stage"
     assert result["command"] == "ls"
-    assert result["verified"] is False
+    assert result["verified"] is True
 
 
 def test_why_explains_the_last_run(
@@ -163,7 +164,7 @@ def test_a_request_can_start_with_a_subcommand_word(
 ) -> None:
     """`tth how do I init git` must mean a request, not the init subcommand."""
     monkeypatch.chdir(tmp_path)
-    _patch_policy(monkeypatch, call("stage", command="git init"))
+    _patch_policy(monkeypatch, call("inspect_context"), call("stage", command="git init"))
     assert cli.main(["--json", "how", "do", "I", "init", "git"]) == 0
     assert json.loads(capsys.readouterr().out)["command"] == "git init"
 

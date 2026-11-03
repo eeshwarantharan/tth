@@ -33,6 +33,10 @@ class Episode:
     meta: dict[str, Any] = field(default_factory=dict)
 
 
+def _source_meta(out: StepOutcome) -> dict[str, str]:
+    return {"source": out.source} if out.source != "model" else {}
+
+
 def _result_text(result: Any) -> str:
     if isinstance(result, str):
         return result
@@ -87,7 +91,7 @@ class EpisodeRunner:
     def _budget_end(self) -> None:
         out = self.env.finish("budget")
         self._emit(TraceEvent(episode=self.ep.id, domain=self.env.domain, step=self.step, result=out.result,
-                              ok=out.ok, decision=out.decision))  # fmt: skip
+                              ok=out.ok, decision=out.decision, meta=_source_meta(out)))  # fmt: skip
         self._end(out)
 
     def advance(self, turn: ModelTurn) -> None:
@@ -123,7 +127,7 @@ class EpisodeRunner:
                                 "content": _result_text(out.result)})  # fmt: skip
             self._emit(TraceEvent(episode=ep.id, domain=env.domain, step=self.step,
                                   call=Call(tool=call.name, args=call.args), result=out.result, ok=out.ok,
-                                  decision=out.decision, raw=turn.raw))  # fmt: skip
+                                  decision=out.decision, raw=turn.raw, meta=_source_meta(out)))  # fmt: skip
             self.step += 1
             if out.done:
                 self._end(out)

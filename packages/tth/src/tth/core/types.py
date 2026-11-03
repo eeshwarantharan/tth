@@ -56,6 +56,7 @@ class StepOutcome:
     ok: bool = True
     done: bool = False
     decision: str | None = None  # set when the episode ends
+    source: str = "model"  # "gate" when a deterministic rule made this decision rather than the model
 
 
 @dataclass
