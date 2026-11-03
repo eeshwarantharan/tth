@@ -13,7 +13,7 @@ from openai import APIError, OpenAI, RateLimitError
 
 from tth.core.config import load_user_env
 from tth.core.types import ModelTurn, ToolCall, ToolDef
-from tth.inference.toolcalls import to_openai_messages
+from tth.inference.toolcalls import parse_qwen, to_openai_messages
 
 NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
 NVIDIA_MODEL = "nvidia/nemotron-3.5-super-vl-120b-a12b"
@@ -53,6 +53,8 @@ class OpenAIPolicy:
         max_tokens: int = 16384,
         thinking: bool = True,
         limiter: RateLimiter | None = _LIMITER,
+        tool_choice: str | None = None,
+        attempts: int = 8,
     ) -> None:
         if api_key is None:
             load_user_env()
@@ -63,6 +65,8 @@ class OpenAIPolicy:
         self.max_tokens = max_tokens
         self.thinking = thinking
         self.limiter = limiter if base_url == NVIDIA_BASE_URL else None
+        self.tool_choice = tool_choice  # "required" makes llama.cpp build a grammar from the tool schemas
+        self.attempts = attempts
         self.usage = {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0}
 
     def complete(self, messages: list[dict[str, Any]], tools: list[ToolDef] | None = None) -> Any:
@@ -76,7 +80,9 @@ class OpenAIPolicy:
         if tools:
             kwargs["tools"] = [t.openai() for t in tools]
             kwargs["parallel_tool_calls"] = False
-        for attempt in range(8):
+            if self.tool_choice:
+                kwargs["tool_choice"] = self.tool_choice
+        for attempt in range(self.attempts):
             if self.limiter:
                 self.limiter.wait()
             try:
@@ -89,10 +95,10 @@ class OpenAIPolicy:
             except RateLimitError:
                 time.sleep(10 * (attempt + 1))
             except APIError:
-                if attempt == 7:
+                if attempt == self.attempts - 1:
                     raise
                 time.sleep(2 * (attempt + 1))
-        raise RuntimeError("rate limited: gave up after 8 attempts")
+        raise RuntimeError(f"rate limited: gave up after {self.attempts} attempts")
 
     def chat(self, messages: list[dict[str, Any]], tools: list[ToolDef]) -> ModelTurn:
         r = self.complete(messages, tools)
@@ -106,4 +112,11 @@ class OpenAIPolicy:
                 calls.append(ToolCall(name=tc.function.name, args=args, id=tc.id))
             except (json.JSONDecodeError, ValueError) as e:
                 calls.append(ToolCall(name=tc.function.name, args={}, id=tc.id, malformed=str(e)))
-        return ModelTurn(content=(msg.content or "").strip(), tool_calls=calls)
+        content = (msg.content or "").strip()
+        if not calls:
+            parsed = parse_qwen(content)
+            return ModelTurn(content=parsed.content, tool_calls=parsed.tool_calls, raw=content)
+        raw = json.dumps(
+            [{"name": tc.function.name, "arguments": tc.function.arguments} for tc in msg.tool_calls or []]
+        )
+        return ModelTurn(content=content, tool_calls=calls, raw=raw)

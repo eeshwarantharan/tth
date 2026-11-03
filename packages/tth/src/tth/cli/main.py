@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import sys
 import time
@@ -103,8 +104,32 @@ def escalate_flow(env: ProductEnv, messages: list) -> Outcome:
     return Outcome("stage", result.command, result.tier, result.notes, origin="expert", verified=result.verified)
 
 
+def _llama_policy(config: Config) -> object | None:
+    from dataclasses import replace
+
+    try:
+        from tth.inference.llamacpp import ServerUnavailable, ensure_server, llama_policy
+    except ImportError:
+        ui.problem("The llama.cpp backend isn't installed.", "Run: pip install 'tth[openai]'")
+        return None
+    with_backend = replace(config, backend="llamacpp")
+    model = find_model(with_backend)
+    if model is None:
+        looked = ", ".join(str(p) for p in model_candidates(with_backend))
+        ui.problem("No GGUF model found.", f"Looked in: {looked}. Run `tth setup` for how to get one.")
+        return None
+    try:
+        ensure_server(model, state_dir() / "llama-server.log")
+    except ServerUnavailable as e:
+        ui.problem(str(e))
+        return None
+    return llama_policy()
+
+
 def _make_policy(args: argparse.Namespace, config: Config) -> object | None:
     """The configured model, or None after explaining what's missing."""
+    if args.backend == "llamacpp":
+        return _llama_policy(config)
     if args.backend == "mlx":
         model = find_model(config)
         if model is None:
@@ -131,6 +156,8 @@ def cmd_run(args: argparse.Namespace) -> int:
     from tth.agent.loop import run_episode
     from tth.agent.product import ProductEnv
 
+    # The terminal shows tth's own lines. Library logging would bury them, and the trace has the detail.
+    logging.disable(logging.CRITICAL)
     load_user_env()
     config = load_config()
     request = " ".join(args.request).strip()
@@ -248,6 +275,14 @@ def cmd_setup(args: argparse.Namespace) -> int:
         except ImportError:
             ok = False
             err("backend: mlx isn't installed. On Apple Silicon: pip install 'tth[mlx]'")
+    elif config.backend == "llamacpp":
+        import shutil
+
+        if shutil.which("llama-server"):
+            err("backend: llama.cpp ok")
+        else:
+            ok = False
+            err("backend: llama-server isn't installed. On macOS: brew install llama.cpp")
     err(f'shell integration: add to your rc file ->  eval "$(tth init {Path(os.environ.get("SHELL", "zsh")).name})"')
     return 0 if ok else 1
 
@@ -277,7 +312,7 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("request", nargs="+")
     r.add_argument("--out", help="write the staged command here (used by the shell widget)")
     r.add_argument("--adapter", help="LoRA adapter directory (MLX)")
-    r.add_argument("--backend", choices=["mlx", "openai"], default=None)
+    r.add_argument("--backend", choices=["mlx", "llamacpp", "openai"], default=None)
     r.add_argument("--base-url", default=None,
                    help="llama-server URL for --backend openai")  # fmt: skip
     r.add_argument("--model", default="local")

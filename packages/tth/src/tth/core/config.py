@@ -13,6 +13,7 @@ from dataclasses import dataclass, fields
 from pathlib import Path
 
 DEFAULT_MODEL_DIR = "qwen2.5-coder-1.5b-4bit"
+DEFAULT_GGUF = "qwen2.5-coder-1.5b-instruct-q4_k_m.gguf"
 _ENV_NAMES = {
     "backend": "TTH_BACKEND",
     "model_path": "TTH_MODEL",
@@ -80,7 +81,8 @@ def model_candidates(config: Config, cwd: Path | None = None) -> list[Path]:
     """Where the model may be, in order. A checkout's models/ folder is last, for development."""
     if config.model_path:
         return [Path(config.model_path).expanduser()]
-    return [data_dir() / "models" / DEFAULT_MODEL_DIR, (cwd or Path.cwd()) / "models" / DEFAULT_MODEL_DIR]
+    name = DEFAULT_GGUF if config.backend == "llamacpp" else DEFAULT_MODEL_DIR
+    return [data_dir() / "models" / name, (cwd or Path.cwd()) / "models" / name]
 
 
 def find_model(config: Config, cwd: Path | None = None) -> Path | None:

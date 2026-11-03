@@ -81,6 +81,16 @@ The agent reaches experts only through `tth/agent/escalation.py`, which is where
 
 `tth/agent/product.py` sits between the model and your prompt, and holds the rules that make "look before you act" structural. Staging a read-only command tests it first. Changing files requires having looked. Repeating a passing test commits it, and repeating a failure stops the loop. Decisions made by a rule are labelled `gate` in the trace.
 
+## Running a model
+
+`tth/inference/` has three backends, chosen by the `backend` setting:
+
+| Backend | Runs | Grammar |
+|---|---|---|
+| `llamacpp` | A GGUF through a warm local `llama-server`, which stays loaded between requests and only listens on this machine | Available: the MCP tool schemas become the decoding grammar |
+| `mlx` | MLX weights in the same process | No |
+| `openai` | Any OpenAI-compatible server you run | Depends on the server |
+
 ## What's changing
 
-[Phase 3 of the roadmap](ROADMAP.md) continues with a grammar generated from tool schemas and a llama.cpp backend. The gym still calls `mcp/toolbox.py` directly, until Phase 4 turns its environments into MCP servers.
+Phase 4 of the [roadmap](ROADMAP.md) turns gym environments into MCP servers, fixes the rewards and runs the model bake-off. Until then the gym calls `mcp/toolbox.py` directly.

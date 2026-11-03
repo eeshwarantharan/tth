@@ -172,3 +172,19 @@ def test_a_request_can_start_with_a_subcommand_word(
 def test_scripted_tool_call_helper_matches_the_parser() -> None:
     turn = parse_qwen(call("dry_run", command="ls"))
     assert turn.tool_calls == [ToolCall(name="dry_run", args={"command": "ls"})]
+
+
+def test_library_logging_stays_out_of_the_users_terminal(
+    tmp_path: Path, traces: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import logging
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "a.txt").write_text("x\n")
+    _patch_policy(monkeypatch, call("stage", command="ls"))
+    try:
+        cli.main(["--json", "--", "list"])
+        logging.getLogger("httpx").warning("HTTP Request: noise")
+        assert "noise" not in capsys.readouterr().err
+    finally:
+        logging.disable(logging.NOTSET)

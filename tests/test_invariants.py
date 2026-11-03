@@ -17,7 +17,8 @@ SRC = Path(__file__).resolve().parents[1] / "packages" / "tth" / "src" / "tth"
 SPAWN = {("subprocess", "run"), ("subprocess", "Popen"), ("subprocess", "call"), ("subprocess", "check_call"),
          ("subprocess", "check_output"), ("os", "system"), ("os", "popen"), ("os", "execv"), ("os", "execvp"),
          ("os", "execl"), ("os", "spawnv"), ("os", "posix_spawn")}  # fmt: skip
-ALLOWED = {("sandbox/runner.py", "run"), ("cli/main.py", "_start_expert")}
+# The sandbox runs probes. The other two start servers, and neither ever receives the user's command.
+ALLOWED = {("sandbox/runner.py", "run"), ("cli/main.py", "_start_expert"), ("inference/llamacpp.py", "ensure_server")}
 
 
 def _spawns(tree: ast.AST) -> list[tuple[str, int]]:
@@ -77,7 +78,7 @@ def test_product_never_uses_disposable_mode(monkeypatch, tmp_path: Path) -> None
 def test_no_other_way_to_spawn_is_imported() -> None:
     """The check above only sees `subprocess.x()` calls, so ban the other routes into a process."""
     banned = {"subprocess", "pty", "multiprocessing"}
-    allowed_files = {"sandbox/runner.py", "cli/main.py"}
+    allowed_files = {"sandbox/runner.py", "cli/main.py", "inference/llamacpp.py"}
     offenders = []
     for f in SRC.rglob("*.py"):
         rel = f.relative_to(SRC).as_posix()

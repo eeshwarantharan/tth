@@ -37,12 +37,17 @@ def _clean_exit(r: ToolResult) -> bool:
     return r.data.get("exit_code") in (0, 1) and not r.data.get("stderr") and not r.data.get("error")
 
 
+def _has_output(r: ToolResult) -> bool:
+    """Blank lines don't count: an awk summing nothing prints one, and that isn't an answer."""
+    return any(str(line).strip() for line in r.data.get("sample") or [])
+
+
 def _passed_with_output(r: ToolResult) -> bool:
-    return _clean_exit(r) and bool(r.data.get("lines"))
+    return _clean_exit(r) and _has_output(r)
 
 
 def _ran_with_no_output(r: ToolResult) -> bool:
-    return _clean_exit(r) and not r.data.get("lines")
+    return _clean_exit(r) and not _has_output(r)
 
 
 class ProductEnv:

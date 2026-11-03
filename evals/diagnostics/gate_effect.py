@@ -29,7 +29,8 @@ def run_task(task, seed: int, policy) -> dict:
     fixture = ShellEnv(task, seed=seed, p_timeout=0)
     fixture.reset()
     env = ProductEnv(task.request, fixture.root, "zsh")
-    policy.reset()
+    if hasattr(policy, "reset"):
+        policy.reset()
     t0 = time.time()
     episode = run_episode(env, policy, budget=6)
     env.close()

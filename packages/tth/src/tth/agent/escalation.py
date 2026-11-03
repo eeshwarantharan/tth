@@ -98,5 +98,6 @@ def escalate(
     verified, test = False, None
     if selection_part(answer.command) is not None:
         r = env.tools.call("dry_run", {"command": answer.command})
-        verified, test = r.ok and bool(r.data.get("lines")), {"ok": r.ok, **r.data}
+        has_output = any(str(line).strip() for line in r.data.get("sample") or [])
+        verified, test = r.ok and has_output, {"ok": r.ok, **r.data}
     return Escalation("stage", rw.staged, rw.tier.label, rw.notes, verified, answer.explanation, test=test)

@@ -71,6 +71,15 @@ def test_a_command_with_no_output_is_not_called_verified(project: Path, command:
     assert "no output" in results[0]["content"]
 
 
+def test_a_blank_line_is_not_an_answer(project: Path) -> None:
+    """Found in a real run: an awk that matched nothing printed an empty sum, and was labelled verified."""
+    command = "awk '$1 == \"zzz\" {s += 1} END {print s}' a.txt"
+    env, _, results = run(project, call("stage", command=command), call("stage", command=command))
+    assert staged(env) == command
+    assert not env.verified
+    assert "no output" in results[0]["content"]
+
+
 def test_grep_count_of_zero_is_a_real_answer(project: Path) -> None:
     env, _, _ = run(project, call("stage", command="grep -c zzz a.txt"))
     assert staged(env) == "grep -c zzz a.txt"
