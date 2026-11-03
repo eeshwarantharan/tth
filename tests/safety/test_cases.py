@@ -8,9 +8,14 @@ import pytest
 import yaml
 
 from tth.safety.classifier import Tier, classify
-from tth.safety.rewriter import rewrite, selection_part
+from tth.safety.rewriter import rewrite, selection_part, trash_argv
 
 CASES_DIR = Path(__file__).parent / "cases"
+
+
+def _on_this_platform(expected: str | None) -> str | None:
+    """Cases are written for macOS `trash`. Linux stages `gio trash`."""
+    return expected.replace("trash ", " ".join(trash_argv()) + " ") if expected else expected
 
 
 def _load() -> list[tuple[str, dict]]:
@@ -31,7 +36,7 @@ def test_case(case: dict, tmp_path: Path) -> None:
     assert c.tier.label == case["tier"], f"{cmd!r}: {c.tier.label} {c.reasons}"
     rw = rewrite(cmd, cwd=tmp_path)
     if "staged" in case:
-        assert rw.staged == case["staged"], rw.notes
+        assert rw.staged == _on_this_platform(case["staged"]), rw.notes
     if "staged_contains" in case:
         assert rw.staged is not None and case["staged_contains"] in rw.staged, rw.notes
     if case.get("never_raw"):
