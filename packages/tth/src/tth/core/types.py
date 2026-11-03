@@ -44,6 +44,13 @@ class ModelTurn:
 
 
 @dataclass
+class ToolResult:
+    data: dict[str, Any]
+    ok: bool = True
+    decision: str | None = None
+
+
+@dataclass
 class StepOutcome:
     result: Any
     ok: bool = True

@@ -21,10 +21,14 @@ import sys
 import time
 from dataclasses import asdict
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tth.core.config import Config, ConfigError, find_model, load_config, load_user_env, model_candidates, state_dir
 from tth.trace.schema import TraceEvent, TraceLogger, read_trace
 from tth.ui.terminal import Outcome, Style, TerminalRenderer, err
+
+if TYPE_CHECKING:
+    from tth.agent.product import ProductEnv
 
 ui = TerminalRenderer()
 
@@ -70,15 +74,15 @@ def finish(outcome: Outcome, args: argparse.Namespace) -> int:
     return 0 if outcome.decision == "stage" else 1
 
 
-def escalate_flow(request: str, ep_messages: list, reason: str, cwd: Path, shell: str, assume_yes: bool) -> Outcome:
+def escalate_flow(env: ProductEnv, ep_messages: list, assume_yes: bool) -> Outcome:
     from tth.a2a.client import ask_expert, expert_reachable
     from tth.a2a.payload import build_payload
     from tth.agent.product import os_label
-    from tth.mcp.toolbox import ShellToolbox
     from tth.safety.rewriter import rewrite, selection_part
 
     s = ui.s
-    p = build_payload(request, ep_messages, reason, os_label(), shell)
+    reason = env.reason or "could not verify locally"
+    p = build_payload(env.request, ep_messages, reason, os_label(), env.shell)
     err(f"\n  {s.yellow}{s.bold}can't verify this locally. Ask the expert agent?{s.reset}  {s.dim}{reason}{s.reset}")
     err(f"  {s.dim}This exact text would be sent (redacted: {', '.join(p.redactions) or 'nothing'}):{s.reset}")
     for line in p.text.splitlines():
@@ -96,7 +100,7 @@ def escalate_flow(request: str, ep_messages: list, reason: str, cwd: Path, shell
     a = ask_expert(p.text)
     if not a.command:
         return Outcome("failed", message=f"The expert didn't give a command: {a.explanation}")
-    rw = rewrite(a.command, cwd=cwd)
+    rw = rewrite(a.command, cwd=env.cwd)
     if rw.staged is None:
         notes = "; ".join(rw.notes)
         return Outcome(
@@ -106,7 +110,7 @@ def escalate_flow(request: str, ep_messages: list, reason: str, cwd: Path, shell
     # Verify the expert's answer the same way as a local one: dry-run its read/selection part.
     verified = False
     if selection_part(a.command) is not None:
-        r = ShellToolbox(cwd, shell=shell).call("dry_run", {"command": a.command})  # noqa: S604
+        r = env.tools.call("dry_run", {"command": a.command})
         verified = r.ok
         from tth.trace.schema import Call
 
@@ -157,18 +161,21 @@ def cmd_run(args: argparse.Namespace) -> int:
     if policy is None:
         return 1
     env = ProductEnv(request, cwd, shell)
-    logger = TraceLogger(state_dir() / "traces.jsonl")
-    budget = args.budget or config.budget
-    ep = run_episode(env, policy, budget=budget, logger=logger, on_event=ui.event)  # type: ignore[arg-type]
-    if env.decision == "stage" and env.staged:
-        staged = env.staged
-        return finish(
-            Outcome("stage", staged["command"], staged["tier"], staged.get("notes", []), verified=env.verified), args
-        )
-    if env.decision == "ask":
-        return finish(Outcome("ask", message=f"{ui.s.bold}tth asks:{ui.s.reset} {env.reason}"), args)
-    outcome = escalate_flow(request, ep.messages, env.reason or "could not verify locally", cwd, shell, args.yes)
-    return finish(outcome, args)
+    try:
+        logger = TraceLogger(state_dir() / "traces.jsonl")
+        budget = args.budget or config.budget
+        ep = run_episode(env, policy, budget=budget, logger=logger, on_event=ui.event)  # type: ignore[arg-type]
+        if env.decision == "stage" and env.staged:
+            staged = env.staged
+            outcome = Outcome(
+                "stage", staged["command"], staged["tier"], staged.get("notes", []), verified=env.verified
+            )
+            return finish(outcome, args)
+        if env.decision == "ask":
+            return finish(Outcome("ask", message=f"{ui.s.bold}tth asks:{ui.s.reset} {env.reason}"), args)
+        return finish(escalate_flow(env, ep.messages, args.yes), args)
+    finally:
+        env.close()
 
 
 def show_episode(events: list[TraceEvent], raw: bool) -> None:
@@ -275,7 +282,7 @@ def cmd_expert(args: argparse.Namespace) -> int:
 def cmd_mcp(args: argparse.Namespace) -> int:
     from tth.mcp.server import main as mcp_main
 
-    mcp_main()
+    mcp_main(args.rest)
     return 0
 
 
@@ -299,7 +306,9 @@ def main(argv: list[str] | None = None) -> int:
     i.set_defaults(fn=cmd_init)
     sub.add_parser("setup", help="check the install").set_defaults(fn=cmd_setup)
     sub.add_parser("expert", help="run the reference A2A expert").set_defaults(fn=cmd_expert)
-    sub.add_parser("mcp", help="serve read-only probes over MCP (stdio)").set_defaults(fn=cmd_mcp)
+    m = sub.add_parser("mcp", help="serve read-only probes over MCP (stdio)")
+    m.add_argument("rest", nargs=argparse.REMAINDER)
+    m.set_defaults(fn=cmd_mcp)
     w = sub.add_parser("why", help="explain the last result")
     w.add_argument("--raw", action="store_true", help="also show exactly what the model wrote")
     w.set_defaults(fn=cmd_why)

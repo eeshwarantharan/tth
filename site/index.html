@@ -316,9 +316,9 @@ footer .wrap { display: grid; gap: 0.5rem; }
     </div>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Protocol</th><th>Today</th><th>Planned for Phase 3</th></tr></thead>
+        <thead><tr><th>Protocol</th><th>Today</th><th>Planned</th></tr></thead>
         <tbody>
-          <tr><td><b>MCP</b></td><td>A working server other agents can use. tth's own agent calls its tools directly.</td><td>The only path to tools, for both the agent and the gym. CI fails on any bypass.</td></tr>
+          <tr><td><b>MCP</b></td><td>The agent's only path to tools, through a real MCP client, and CI fails on any bypass. Other agents can use the same server with <code>tth mcp</code>.</td><td>The gym moves onto the same contract, so every training environment is an MCP server.</td></tr>
           <tr><td><b>A2A</b></td><td>Basic escalation: one text message to a local expert that calls a hosted model.</td><td>The only path to help, using Agent Cards, task streaming, requests for more evidence, and typed answers.</td></tr>
         </tbody>
       </table>

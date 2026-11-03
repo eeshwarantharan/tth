@@ -5,9 +5,12 @@ from __future__ import annotations
 import platform
 from pathlib import Path
 
+from tth.agent.decisions import DECISION_DEFS, DECISION_NAMES, decide
 from tth.agent.prompts import SHELL_SYSTEM
-from tth.core.types import EpisodeStart, StepOutcome, ToolCall
-from tth.mcp.toolbox import ShellToolbox
+from tth.core.types import EpisodeStart, StepOutcome, ToolCall, ToolResult
+from tth.mcp.client import ToolSession, connect
+
+PROBES = {"inspect_context", "probe", "dry_run"}
 
 
 def os_label() -> str:
@@ -17,9 +20,11 @@ def os_label() -> str:
 class ProductEnv:
     domain = "shell"
 
-    def __init__(self, request: str, cwd: Path, shell: str) -> None:
+    def __init__(self, request: str, cwd: Path, shell: str, tools: ToolSession | None = None) -> None:
         self.request = request
-        self.box = ShellToolbox(cwd, shell=shell)
+        self.cwd = cwd
+        self.shell = shell
+        self.tools = tools or connect(cwd, shell=shell)
         self.staged: dict | None = None
         self.decision: str | None = None
         self.reason: str = ""
@@ -34,8 +39,16 @@ class ProductEnv:
         return self.staged_from is not None and self.staged_from.strip() == (self.last_verified or "").strip()
 
     def reset(self) -> EpisodeStart:
-        return EpisodeStart(system=SHELL_SYSTEM.format(os=os_label(), shell=self.box.shell), user=self.request,
-                            tools=self.box.defs())  # fmt: skip
+        return EpisodeStart(system=SHELL_SYSTEM.format(os=os_label(), shell=self.shell), user=self.request,
+                            tools=self.tools.tools(only=PROBES) + DECISION_DEFS)  # fmt: skip
+
+    def close(self) -> None:
+        self.tools.close()
+
+    def _call(self, name: str, args: dict) -> ToolResult:
+        if name in DECISION_NAMES:
+            return decide(name, args, self.cwd)
+        return self.tools.call(name, args)
 
     def step(self, call: ToolCall) -> StepOutcome:
         if call.malformed:
@@ -46,7 +59,8 @@ class ProductEnv:
 
         # Detect duplicate dry_run
         if call.name == "dry_run":
-            cmd = (call.args.get("command") or "").strip()
+            raw_cmd = call.args.get("command")
+            cmd = raw_cmd.strip() if isinstance(raw_cmd, str) else ""
             # If the model repeats a modifying command that wasn't dry-runnable, stage it!
             if cmd and cmd == self.last_candidate:
                 staged = self._auto_stage_verified()
@@ -67,17 +81,17 @@ class ProductEnv:
                 )
 
         if call.name == "stage":
-            staged_cmd = call.args.get("command", "")
+            staged_cmd = str(call.args.get("command", ""))
             if self.last_verified and any(
                 v in staged_cmd for v in ("$lines", "$count", "$output", "$result", "$sample", "$data")
             ):
                 call.args["command"] = self.last_verified
 
-        r = self.box.call(call.name, call.args)
+        r = self._call(call.name, call.args)
 
         # Track successful, candidate, and failed dry_runs.
         if call.name == "dry_run":
-            cmd = call.args.get("command") or r.data.get("ran") or ""
+            cmd = str(call.args.get("command") or r.data.get("ran") or "")
             if r.ok and r.data.get("exit_code") == 0:
                 self.last_verified = cmd
                 self._failed_commands.pop(cmd, None)
@@ -107,7 +121,7 @@ class ProductEnv:
             explanation = (
                 "Verified locally via dry_run." if target == self.last_verified else "Selected based on context."
             )
-            r = self.box.call("stage", {"command": target, "explanation": explanation})
+            r = self._call("stage", {"command": target, "explanation": explanation})
             if r.decision == "stage":
                 self.decision = "stage"
                 self.staged = r.data

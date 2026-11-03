@@ -45,7 +45,7 @@ find src -name '*.py' | wc -l
 | Command classifier and rewriter | Hardened against every [known bypass](docs/analysis/2026-11-audit.md#4-safety-defects), with 451 red-team cases and adversarial fuzzing. Not independently reviewed, so more gaps are likely |
 | Secret redaction | Covers JSON, env values, tokens and keys. Pattern-based, so it can miss things |
 | Chess, table and shell gym environments | Work |
-| MCP | Server works, and the agent doesn't use it yet (Phase 3) |
+| MCP | The agent reaches tools only through a real MCP client, and other agents can use `tth mcp`. The gym moves over in Phase 4 |
 | A2A | Basic escalation works, full task lifecycle planned (Phase 3) |
 | Trained model | **None worth shipping.** No trained arm has beaten the untrained base |
 | llama.cpp backend | Only through an OpenAI-compatible server you run yourself (Phase 3) |

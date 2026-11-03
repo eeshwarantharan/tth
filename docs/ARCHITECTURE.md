@@ -28,7 +28,7 @@ trace | core               trace format | shared types and config
 |---|---|
 | Change what counts as safe | `packages/tth/src/tth/safety/classifier.py`, then add a case to `tests/safety/cases/` |
 | Change how commands are parsed | `packages/tth/src/tth/safety/parser.py` |
-| Add or change a tool | `packages/tth/src/tth/mcp/toolbox.py` |
+| Add or change a tool | `packages/tth/src/tth/mcp/server.py` and `toolbox.py` |
 | Change sandbox rules | `packages/tth/src/tth/sandbox/runner.py` |
 | Change the agent loop | `packages/tth/src/tth/agent/loop.py` |
 | Add a model backend | `packages/tth/src/tth/inference/` |
@@ -57,6 +57,14 @@ trace | core               trace format | shared types and config
 - Every run appends to the trace file, in one JSONL format shared by the product, training and evals. Each model turn records its raw text, because the lack of it hid a training bug in v0.1.
 - `evals/diagnostics/` holds small, reproducible experiments, such as measuring where training loss sits per token.
 
+## MCP
+
+The agent reaches tools only through `tth/mcp/client.py`, a real MCP client. Tools are discovered with `tools/list` and called with `tools/call`. CI fails if the agent imports tool code directly.
+
+The default transport is in-memory, and stdio is available too. Both speak the same protocol, and every contract test runs over both. In-memory connects about 100 times faster, with about the same per-call cost ([measured](../evals/diagnostics/results/mcp_overhead.json)), which is why it's the default.
+
+`stage`, `escalate` and `ask_user` live in `tth/agent/decisions.py`, in the client. Staging writes to your prompt, so it's never served over MCP.
+
 ## What's changing
 
-[Phase 3 of the roadmap](ROADMAP.md) makes the agent a real MCP client and rebuilds escalation on the full A2A task lifecycle. Today the agent calls `mcp/toolbox.py` directly, and A2A carries one text message.
+[Phase 3 of the roadmap](ROADMAP.md) continues with verify-then-commit, a grammar generated from tool schemas, a llama.cpp backend, and escalation on the full A2A task lifecycle. Today A2A carries one text message. The gym still calls `mcp/toolbox.py` directly, until Phase 4 turns its environments into MCP servers.

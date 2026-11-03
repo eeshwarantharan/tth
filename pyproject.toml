@@ -28,6 +28,7 @@ ignore = ["S101", "S603", "S607", "S311", "E501"]  # line length is left to the 
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S"]
+"evals/**" = ["S604"]  # `shell=` here names the user's shell, and nothing is run through one
 
 [tool.ruff.lint.isort]
 known-first-party = ["tth", "tth_gym", "evals"]
@@ -75,3 +76,11 @@ name = "Training never sees held-out evals"
 type = "forbidden"
 source_modules = ["tth_gym"]
 forbidden_modules = ["evals"]
+
+[[tool.importlinter.contracts]]
+name = "The agent reaches tools only through MCP"
+type = "forbidden"
+source_modules = ["tth.agent", "tth.cli", "tth.ui"]
+forbidden_modules = ["tth.mcp.toolbox", "tth.mcp.server"]
+allow_indirect_imports = true
+ignore_imports = ["tth.cli.main -> tth.mcp.server"]  # `tth mcp` serves it, and doesn't call its tools

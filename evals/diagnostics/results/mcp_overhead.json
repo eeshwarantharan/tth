@@ -1,0 +1,31 @@
+{
+ "machine": "Darwin arm64",
+ "calls": 30,
+ "connects": 5,
+ "direct": {
+  "dry_run": {
+   "median_ms": 43.51,
+   "max_ms": 54.96
+  }
+ },
+ "memory": {
+  "connect": {
+   "median_ms": 4.88,
+   "max_ms": 33.49
+  },
+  "dry_run": {
+   "median_ms": 23.1,
+   "max_ms": 76.13
+  }
+ },
+ "stdio": {
+  "connect": {
+   "median_ms": 497.75,
+   "max_ms": 507.1
+  },
+  "dry_run": {
+   "median_ms": 23.9,
+   "max_ms": 47.07
+  }
+ }
+}

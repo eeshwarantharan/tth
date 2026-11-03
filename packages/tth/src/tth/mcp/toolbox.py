@@ -10,15 +10,15 @@ from __future__ import annotations
 import json
 import os
 import platform
-import shlex
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from tth.core.types import ToolDef
-from tth.safety.classifier import Tier, classify
-from tth.safety.rewriter import rewrite, selection_part
+from tth.core.types import ToolDef, ToolResult
+from tth.safety.classifier import classify
+from tth.safety.rewriter import selection_part
 from tth.safety.secrets import is_secret_path
+from tth.safety.staging import stage
 from tth.sandbox.runner import DEFAULT_CAP, DEFAULT_TIMEOUT, ProbeResult, run, run_shell
 
 SAMPLE_LINES = 15
@@ -57,13 +57,6 @@ TOOL_DEFS = [
             "that does not exist. Ends the task.",
             _obj({"question": {"type": "string"}}, ["question"]), read_only=True, sandboxed=False),
 ]  # fmt: skip
-
-
-@dataclass
-class ToolResult:
-    data: dict[str, Any]
-    ok: bool = True
-    decision: str | None = None
 
 
 @dataclass
@@ -199,13 +192,7 @@ class ShellToolbox:
 
     # ---- decisions ----------------------------------------------------------------
     def t_stage(self, command: str, explanation: str = "") -> ToolResult:
-        rw = rewrite(command, cwd=self.cwd)
-        if rw.staged is None:
-            return ToolResult({"staged": False, "tier": rw.tier.label, "notes": rw.notes,
-                               "hint": "choose a safer command, ask the user, or escalate"}, ok=False)  # fmt: skip
-        return ToolResult({"staged": True, "command": rw.staged, "tier": rw.tier.label,
-                           "rewritten": rw.changed, "notes": rw.notes, "explanation": explanation},
-                          decision="stage")  # fmt: skip
+        return stage(command, explanation, self.cwd)
 
     def t_escalate(self, reason: str) -> ToolResult:
         return ToolResult({"escalated": True, "reason": reason}, decision="escalate")
@@ -233,11 +220,3 @@ def _json_keys(path: str, head: str, box: ShellToolbox) -> dict[str, Any]:
         except json.JSONDecodeError:
             pass
     return {"path": path, "format": "unknown", "head": head[:500]}
-
-
-def describe_staged(data: dict[str, Any]) -> str:
-    return shlex.quote(data.get("command", ""))
-
-
-TIER_BADGE = {Tier.READ_ONLY.label: "read-only", Tier.CHANGES_FILES.label: "changes files",
-              Tier.NEEDS_REVIEW.label: "needs review"}  # fmt: skip
