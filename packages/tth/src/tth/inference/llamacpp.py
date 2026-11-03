@@ -9,6 +9,7 @@ The process started here is a model server. It never receives or runs the user's
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import time
@@ -50,9 +51,22 @@ def is_healthy(port: int) -> bool:
         return False
 
 
+def served_model(port: int) -> str | None:
+    """The model file the server on this port has loaded."""
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/props", timeout=2) as r:  # noqa: S310 - fixed local URL
+            return json.load(r).get("model_path")
+    except (urllib.error.URLError, OSError, ValueError):
+        return None
+
+
 def ensure_server(model: Path, log: Path, port: int = DEFAULT_PORT) -> None:
-    """Use the warm server if there is one. Otherwise start it and wait until the model has loaded."""
+    """Use the warm server if it has this model. Otherwise start one and wait until the model has loaded."""
     if is_healthy(port):
+        running = served_model(port)
+        if running and Path(running).resolve() != model.resolve():
+            # Answering from the wrong model would be silently wrong, and that would invalidate any comparison.
+            raise ServerUnavailable(f"llama-server on port {port} is running {running}. Stop it to use {model}.")
         return
     if shutil.which("llama-server") is None:
         raise ServerUnavailable("llama-server isn't installed. On macOS: brew install llama.cpp")

@@ -45,8 +45,17 @@ def test_missing_llama_server_explains_how_to_get_it(tmp_path: Path, monkeypatch
         llamacpp.ensure_server(tmp_path / "m.gguf", tmp_path / "log")
 
 
+def test_a_server_running_another_model_is_never_used(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Otherwise a model comparison could silently test the same model every time."""
+    monkeypatch.setattr(llamacpp, "is_healthy", lambda port: True)
+    monkeypatch.setattr(llamacpp, "served_model", lambda port: str(tmp_path / "other.gguf"))
+    with pytest.raises(llamacpp.ServerUnavailable, match="other.gguf"):
+        llamacpp.ensure_server(tmp_path / "m.gguf", tmp_path / "log")
+
+
 def test_a_healthy_server_is_reused(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(llamacpp, "is_healthy", lambda port: True)
+    monkeypatch.setattr(llamacpp, "served_model", lambda port: str(tmp_path / "m.gguf"))
     monkeypatch.setattr(llamacpp.subprocess, "Popen", lambda *a, **k: pytest.fail("started a second server"))
     llamacpp.ensure_server(tmp_path / "m.gguf", tmp_path / "log")
 
