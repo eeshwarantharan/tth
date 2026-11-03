@@ -194,8 +194,11 @@ def reward(env: ShellEnv, escalation_cost: float = 0.3) -> ShellReward:
     else:
         parts["answer"] = 1.0 if correct else 0.0
     recs = st.records
-    parts["malformed"] = -0.2 * sum(r.error in ("malformed_call", "unknown_tool", "bad_args", "no_tool_call")
-                                    for r in recs)  # fmt: skip
+    bad = sum(r.error in ("malformed_call", "unknown_tool", "bad_args", "no_tool_call") for r in recs)
+    parts["malformed"] = -min(0.6, 0.2 * bad)
+    # Ending with no decision must be the worst outcome. Otherwise RL learns that saying nothing is safe.
+    if st.decision in (None, "budget"):
+        parts["no_decision"] = -1.0
     if st.decision == "stage" and st.staged is not None:
         before = recs[:-1]
         if selection_part(st.staged) is not None:

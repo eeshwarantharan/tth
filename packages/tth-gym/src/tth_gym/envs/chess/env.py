@@ -78,6 +78,8 @@ SYSTEM = (
     "tasks: read the tool schemas."
 )
 
+MALFORMED_CAP = 0.6  # recovering from bad calls should still pay
+NO_DECISION_PENALTY = -1.0
 STATE_TOOLS = {"simulate", "submit"}
 OBSERVE_TOOLS = {"view", "moves", "piece", "simulate"}
 
@@ -404,8 +406,11 @@ def reward(task: ChessTask, st: EpisodeState, expert_cost: float = 0.3) -> Rewar
         parts["answer"] = 1.0 if correct else 0.0
 
     recs = st.records
-    parts["malformed"] = -0.2 * sum(1 for r in recs if r.error in ("malformed_call", "unknown_tool",
-                                                                   "bad_args", "no_tool_call"))  # fmt: skip
+    bad = sum(1 for r in recs if r.error in ("malformed_call", "unknown_tool", "bad_args", "no_tool_call"))
+    parts["malformed"] = -min(MALFORMED_CAP, 0.2 * bad)
+    # Ending with no decision must be the worst outcome. Otherwise RL learns that saying nothing is safe.
+    if st.decision in (None, "budget"):
+        parts["no_decision"] = NO_DECISION_PENALTY
     if any(r.error in ("acted_on_stale",) for r in recs):
         parts["stale"] = -0.5
     final_idx = next((i for i in range(len(recs) - 1, -1, -1) if recs[i].canon in ("submit", "impossible")), None)
@@ -417,6 +422,8 @@ def reward(task: ChessTask, st: EpisodeState, expert_cost: float = 0.3) -> Rewar
             verified = recs[final_idx].move is not None and recs[final_idx].move in st.verified_moves
         if task.kind == "engine_eval":
             verified = st.escalated  # no local tool can verify an engine evaluation
+        elif st.escalated:
+            verified = True  # the expert's answer is the evidence, and its cost is charged separately
         if not verified:
             parts["unverified"] = -0.4
         # Claiming success after a tool error: the last call failed and the answer

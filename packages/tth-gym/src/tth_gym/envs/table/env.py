@@ -312,9 +312,11 @@ def reward(task: TableTask, st: TState, cost: float = 0.3) -> tuple[float, bool,
     else:
         parts["answer"] = 1.0 if correct else 0.0
     recs = st.records
-    parts["malformed"] = -0.2 * sum(
-        r.error in ("malformed_call", "unknown_tool", "bad_args", "no_tool_call") for r in recs
-    )
+    bad = sum(r.error in ("malformed_call", "unknown_tool", "bad_args", "no_tool_call") for r in recs)
+    parts["malformed"] = -min(0.6, 0.2 * bad)
+    # Ending with no decision must be the worst outcome. Otherwise RL learns that saying nothing is safe.
+    if st.decision in (None, "budget"):
+        parts["no_decision"] = -1.0
     if any(r.error == "acted_on_stale" for r in recs):
         parts["stale"] = -0.5
     fi = next((i for i in range(len(recs) - 1, -1, -1) if recs[i].canon in ("submit", "impossible")), None)
@@ -322,7 +324,9 @@ def reward(task: TableTask, st: TState, cost: float = 0.3) -> tuple[float, bool,
         before = recs[:fi]
         need = {"sum": {"compute"}, "count": {"compute", "query"}, "max_name": {"view", "compute"},
                 "lookup": {"inspect", "view"}, "missing": {"inspect", "query", "view"}}.get(task.kind)  # fmt: skip
-        verified = st.escalated if task.kind == "forecast" else any(r.ok and r.canon in (need or set()) for r in before)
+        verified = st.escalated or (
+            task.kind != "forecast" and any(r.ok and r.canon in (need or set()) for r in before)
+        )
         if not verified:
             parts["unverified"] = -0.4
         if before and not before[-1].ok and before[-1].error in ("timeout", "malformed_response", "stale", "bad_token"):

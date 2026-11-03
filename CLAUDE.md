@@ -95,7 +95,8 @@ Step budget: default 6 tool calls before forced escalate-or-ask.
 | Correct "can't be done" on impossible tasks | +1.0 |
 | Commit without verifying (even if correct) | −0.4 |
 | Acting on stale state | −0.5 |
-| Malformed tool call | −0.2 (episode continues) |
+| Malformed tool call | −0.2 each, capped at −0.6 (episode continues) |
+| Ending with no decision | −1.0 (the worst outcome, so RL can't learn that silence is safe) |
 | Claiming success after a tool error | −1.0 |
 
 Verifiers (`python-chess`, Stockfish, container execution) assign reward. The teacher model never does.
