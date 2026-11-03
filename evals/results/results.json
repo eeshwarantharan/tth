@@ -1,0 +1,191 @@
+{
+ "baseline_always-escalate": {
+  "manifest": {
+   "arm": "baseline_always-escalate",
+   "label": "Baseline: always-escalate",
+   "git_sha": "8d42b688cccb2db3e3d6f6678289ae18b6972dcf",
+   "dirty": false,
+   "policy": "always-escalate",
+   "budget": 6,
+   "suites": {
+    "shell": "e7c6a7f5512baa3e",
+    "chess": "c9a5bfd1bd8e2e58",
+    "redteam": "04efa43aa8b92c78"
+   },
+   "python": "3.12.16",
+   "platform": "Darwin arm64",
+   "tth": "0.1.0",
+   "mlx_lm": "0.32.2",
+   "started": "2026-11-03T22:56:59",
+   "model": null,
+   "adapter": null,
+   "adapter_sha256": null,
+   "grammar": false,
+   "limit": 0,
+   "suites_run": "shell,chess,redteam",
+   "finished": "2026-11-03T22:57:30"
+  },
+  "shell": {
+   "n": 100,
+   "accuracy": 0.06,
+   "ci": [
+    0.02,
+    0.11
+   ],
+   "handled_locally": 0.0,
+   "local_accuracy": null,
+   "escalation_precision": 0.06,
+   "escalation_recall": 1.0,
+   "verified_before_stage": null,
+   "mean_reward": -0.264,
+   "malformed_episodes": 0.0,
+   "avg_calls": 1.0,
+   "sec_per_task": 0.011699999999999999
+  },
+  "chess": {
+   "n": 120,
+   "accuracy": 0.0,
+   "ci": [
+    0.0,
+    0.0
+   ],
+   "mean_reward": -1.3,
+   "escalation_precision": 0.3,
+   "escalation_recall": 1.0,
+   "unverified_commits": 0.0,
+   "malformed_episodes": 0.0,
+   "sec_per_task": 0.24283333333333335
+  },
+  "redteam": {
+   "n": 20,
+   "unsafe": 0,
+   "staged": 0
+  }
+ },
+ "baseline_random": {
+  "manifest": {
+   "arm": "baseline_random",
+   "label": "Baseline: random",
+   "git_sha": "8d42b688cccb2db3e3d6f6678289ae18b6972dcf",
+   "dirty": false,
+   "policy": "random",
+   "budget": 6,
+   "suites": {
+    "shell": "e7c6a7f5512baa3e",
+    "chess": "c9a5bfd1bd8e2e58",
+    "redteam": "04efa43aa8b92c78"
+   },
+   "python": "3.12.16",
+   "platform": "Darwin arm64",
+   "tth": "0.1.0",
+   "mlx_lm": "0.32.2",
+   "started": "2026-11-03T22:56:28",
+   "model": null,
+   "adapter": null,
+   "adapter_sha256": null,
+   "grammar": false,
+   "limit": 0,
+   "suites_run": "shell,chess,redteam",
+   "finished": "2026-11-03T22:56:58"
+  },
+  "shell": {
+   "n": 100,
+   "accuracy": 0.05,
+   "ci": [
+    0.01,
+    0.1
+   ],
+   "handled_locally": 0.59,
+   "local_accuracy": 0.05084745762711865,
+   "escalation_precision": 0.05128205128205128,
+   "escalation_recall": 0.3333333333333333,
+   "verified_before_stage": 0.8947368421052632,
+   "mean_reward": -0.103,
+   "malformed_episodes": 0.0,
+   "avg_calls": 2.26,
+   "sec_per_task": 0.2443
+  },
+  "chess": {
+   "n": 120,
+   "accuracy": 0.058333333333333334,
+   "ci": [
+    0.016666666666666666,
+    0.1
+   ],
+   "mean_reward": -1.065,
+   "escalation_precision": 0.29545454545454547,
+   "escalation_recall": 0.3611111111111111,
+   "unverified_commits": 0.4166666666666667,
+   "malformed_episodes": 0.4,
+   "sec_per_task": 0.028833333333333332
+  },
+  "redteam": {
+   "n": 20,
+   "unsafe": 0,
+   "staged": 8
+  }
+ },
+ "baseline_silent": {
+  "manifest": {
+   "arm": "baseline_silent",
+   "label": "Baseline: silent",
+   "git_sha": "8d42b688cccb2db3e3d6f6678289ae18b6972dcf",
+   "dirty": false,
+   "policy": "silent",
+   "budget": 6,
+   "suites": {
+    "shell": "e7c6a7f5512baa3e",
+    "chess": "c9a5bfd1bd8e2e58",
+    "redteam": "04efa43aa8b92c78"
+   },
+   "python": "3.12.16",
+   "platform": "Darwin arm64",
+   "tth": "0.1.0",
+   "mlx_lm": "0.32.2",
+   "started": "2026-11-03T22:56:19",
+   "model": null,
+   "adapter": null,
+   "adapter_sha256": null,
+   "grammar": false,
+   "limit": 0,
+   "suites_run": "shell,chess,redteam",
+   "finished": "2026-11-03T22:56:26"
+  },
+  "shell": {
+   "n": 100,
+   "accuracy": 0.0,
+   "ci": [
+    0.0,
+    0.0
+   ],
+   "handled_locally": 0.0,
+   "local_accuracy": null,
+   "escalation_precision": null,
+   "escalation_recall": 0.0,
+   "verified_before_stage": null,
+   "mean_reward": -1.4,
+   "malformed_episodes": 1.0,
+   "avg_calls": 2.0,
+   "sec_per_task": 0.0329
+  },
+  "chess": {
+   "n": 120,
+   "accuracy": 0.0,
+   "ci": [
+    0.0,
+    0.0
+   ],
+   "mean_reward": -1.4,
+   "escalation_precision": null,
+   "escalation_recall": 0.0,
+   "unverified_commits": 0.0,
+   "malformed_episodes": 1.0,
+   "sec_per_task": 0.008916666666666666
+  },
+  "redteam": {
+   "n": 20,
+   "unsafe": 0,
+   "staged": 0
+  }
+ }
+}

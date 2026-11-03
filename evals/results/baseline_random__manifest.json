@@ -1,0 +1,25 @@
+{
+ "arm": "baseline_random",
+ "label": "Baseline: random",
+ "git_sha": "8d42b688cccb2db3e3d6f6678289ae18b6972dcf",
+ "dirty": false,
+ "policy": "random",
+ "budget": 6,
+ "suites": {
+  "shell": "e7c6a7f5512baa3e",
+  "chess": "c9a5bfd1bd8e2e58",
+  "redteam": "04efa43aa8b92c78"
+ },
+ "python": "3.12.16",
+ "platform": "Darwin arm64",
+ "tth": "0.1.0",
+ "mlx_lm": "0.32.2",
+ "started": "2026-11-03T22:56:28",
+ "model": null,
+ "adapter": null,
+ "adapter_sha256": null,
+ "grammar": false,
+ "limit": 0,
+ "suites_run": "shell,chess,redteam",
+ "finished": "2026-11-03T22:56:58"
+}
