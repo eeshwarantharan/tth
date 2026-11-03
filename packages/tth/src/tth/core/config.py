@@ -19,6 +19,8 @@ _ENV_NAMES = {
     "adapter": "TTH_ADAPTER",
     "base_url": "TTH_BASE_URL",
     "expert_url": "TTH_EXPERT_URL",
+    "expert_base_url": "TTH_EXPERT_BASE_URL",
+    "expert_model": "TTH_EXPERT_MODEL",
 }
 
 
@@ -45,6 +47,8 @@ class Config:
     adapter: str | None = None
     base_url: str = "http://127.0.0.1:8080/v1"
     expert_url: str = "http://127.0.0.1:8765"
+    expert_base_url: str = "https://integrate.api.nvidia.com/v1"  # where the reference expert's model lives
+    expert_model: str = "nvidia/nemotron-3.5-super-vl-120b-a12b"
     budget: int = 6
 
 

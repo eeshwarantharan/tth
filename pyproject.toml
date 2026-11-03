@@ -84,3 +84,9 @@ source_modules = ["tth.agent", "tth.cli", "tth.ui"]
 forbidden_modules = ["tth.mcp.toolbox", "tth.mcp.server"]
 allow_indirect_imports = true
 ignore_imports = ["tth.cli.main -> tth.mcp.server"]  # `tth mcp` serves it, and doesn't call its tools
+
+[[tool.importlinter.contracts]]
+name = "Only the escalation path sends anything to an expert"
+type = "forbidden"
+source_modules = ["tth.agent.product", "tth.agent.loop", "tth.ui", "tth.mcp", "tth.inference"]
+forbidden_modules = ["tth.a2a"]

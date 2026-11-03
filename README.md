@@ -46,7 +46,7 @@ find src -name '*.py' | wc -l
 | Secret redaction | Covers JSON, env values, tokens and keys. Pattern-based, so it can miss things |
 | Chess, table and shell gym environments | Work |
 | MCP | The agent reaches tools only through a real MCP client, and other agents can use `tth mcp`. The gym moves over in Phase 4 |
-| A2A | Basic escalation works, full task lifecycle planned (Phase 3) |
+| A2A | The only path to an expert: Agent Cards, task states, evidence requests with fresh consent, typed answers. Any A2A agent can be an expert |
 | Trained model | **None worth shipping.** No trained arm has beaten the untrained base |
 | llama.cpp backend | Only through an OpenAI-compatible server you run yourself (Phase 3) |
 | `pip install tth` | Wheel builds and works from a clean install on macOS. Not published to PyPI yet |
@@ -89,7 +89,7 @@ Then use `t <request>`, or type a request and press Ctrl-G.
 
 On Linux, install `bubblewrap`, use `tth init bash`, and run a model behind an OpenAI-compatible server (for example `llama-server`) with `--backend openai`.
 
-To try escalation, copy [`.env.example`](.env.example) to `~/.config/tth/.env` and add a key. tth never reads a project's own `.env`.
+To try escalation, copy [`.env.example`](.env.example) to `~/.config/tth/.env` and add a key, or point `expert_base_url` at any OpenAI-compatible model. tth never reads a project's own `.env`.
 
 ## How it works
 

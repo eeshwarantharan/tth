@@ -310,7 +310,7 @@ footer .wrap { display: grid; gap: 0.5rem; }
       <div class="link">tools</div>
       <div class="node core"><span class="proto" style="color:var(--term-accent)">on your machine</span><b>Small model</b><span class="small">Picks one tool at a time. A grammar generated from each tool's schema keeps every call valid.</span></div>
       <div class="link">help</div>
-      <div class="node"><span class="proto">A2A</span><b>Expert agent</b><span class="small">A bigger local model first, a hosted one only with your consent. Its answer gets tested locally like any other.</span></div>
+      <div class="node"><span class="proto">A2A</span><b>Expert agent</b><span class="small">Found by its Agent Card. You see the exact text and where it goes before anything is sent. Its answer gets tested locally like any other.</span></div>
       <div class="down" aria-hidden="true">↓</div>
       <div class="node flow-end"><span class="proto">deterministic</span><b>Safety layer, then your prompt</b><span class="small">An allowlist classifier and rewriter, independent of the model. The command lands on your prompt with a tier badge.</span></div>
     </div>
@@ -319,7 +319,7 @@ footer .wrap { display: grid; gap: 0.5rem; }
         <thead><tr><th>Protocol</th><th>Today</th><th>Planned</th></tr></thead>
         <tbody>
           <tr><td><b>MCP</b></td><td>The agent's only path to tools, through a real MCP client, and CI fails on any bypass. Other agents can use the same server with <code>tth mcp</code>.</td><td>The gym moves onto the same contract, so every training environment is an MCP server.</td></tr>
-          <tr><td><b>A2A</b></td><td>Basic escalation: one text message to a local expert that calls a hosted model.</td><td>The only path to help, using Agent Cards, task streaming, requests for more evidence, and typed answers.</td></tr>
+          <tr><td><b>A2A</b></td><td>The only path to help: Agent Cards, task states, requests for more evidence with fresh consent, and typed answers you can check. Any A2A agent can be the expert.</td><td>Teachers in the gym use the same handoff. Verified answers become local lessons.</td></tr>
         </tbody>
       </table>
     </div>

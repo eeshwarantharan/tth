@@ -33,6 +33,7 @@ trace | core               trace format | shared types and config
 | Change the agent loop | `packages/tth/src/tth/agent/loop.py` |
 | Add a model backend | `packages/tth/src/tth/inference/` |
 | Change what escalation sends | `packages/tth/src/tth/a2a/payload.py` and `redact.py` |
+| Change the consent flow | `packages/tth/src/tth/agent/escalation.py` |
 | Add a settings option | `packages/tth/src/tth/core/config.py` |
 | Add a gym environment | `packages/tth-gym/src/tth_gym/envs/` |
 | Add a shell task family | `packages/tth-gym/src/tth_gym/envs/shell/tasks.py` |
@@ -65,6 +66,21 @@ The default transport is in-memory, and stdio is available too. Both speak the s
 
 `stage`, `escalate` and `ask_user` live in `tth/agent/decisions.py`, in the client. Staging writes to your prompt, so it's never served over MCP.
 
+## A2A
+
+The agent reaches experts only through `tth/agent/escalation.py`, which is where consent lives. Tests fail if anything else sends to an expert.
+
+1. **Discover.** The client fetches the expert's Agent Card. This sends no user data.
+2. **Ask.** The user sees the exact redacted text and its real destination. tth's reference expert declares where it forwards to. Only that expert, running locally with no forwarding target, can say the text stays on this machine. The default answer is no, and no flag or variable skips this.
+3. **Follow the task.** The expert can return `input-required` to ask for one more read-only result. That runs through the MCP server, which refuses secret paths, and needs fresh consent. Follow-ups are capped.
+4. **Check the answer.** Typed answers arrive as an artifact, and plain text from other agents is parsed as a fallback. Either way the command goes through the classifier and a local test.
+
+`tth expert` runs the reference expert with any OpenAI-compatible model. Set `expert_base_url` and `expert_model` in the config. Listening beyond this machine requires `TTH_EXPERT_TOKEN`.
+
+## The gate
+
+`tth/agent/product.py` sits between the model and your prompt, and holds the rules that make "look before you act" structural. Staging a read-only command tests it first. Changing files requires having looked. Repeating a passing test commits it, and repeating a failure stops the loop. Decisions made by a rule are labelled `gate` in the trace.
+
 ## What's changing
 
-[Phase 3 of the roadmap](ROADMAP.md) continues with verify-then-commit, a grammar generated from tool schemas, a llama.cpp backend, and escalation on the full A2A task lifecycle. Today A2A carries one text message. The gym still calls `mcp/toolbox.py` directly, until Phase 4 turns its environments into MCP servers.
+[Phase 3 of the roadmap](ROADMAP.md) continues with a grammar generated from tool schemas and a llama.cpp backend. The gym still calls `mcp/toolbox.py` directly, until Phase 4 turns its environments into MCP servers.

@@ -23,9 +23,11 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from tth.a2a.client import ExpertClient
+from tth.agent.escalation import ConsentRequest, escalate
 from tth.core.config import Config, ConfigError, find_model, load_config, load_user_env, model_candidates, state_dir
-from tth.trace.schema import TraceEvent, TraceLogger, read_trace
-from tth.ui.terminal import Outcome, Style, TerminalRenderer, err
+from tth.trace.schema import Call, TraceEvent, TraceLogger, read_trace
+from tth.ui.terminal import Outcome, Style, TerminalRenderer, err, printable
 
 if TYPE_CHECKING:
     from tth.agent.product import ProductEnv
@@ -43,20 +45,22 @@ def _read_tty(prompt: str) -> str:
 
 
 def _start_expert() -> bool:
-    """Start the local A2A expert server in the background (it is a server, not the user's command)."""
+    """Start the reference expert locally, if it can. It stops by itself after 10 idle minutes."""
     import subprocess
+    from importlib.util import find_spec
 
-    from tth.a2a.client import expert_reachable
-
+    if find_spec("uvicorn") is None:
+        return False
     log = state_dir() / "expert.log"
     log.parent.mkdir(parents=True, exist_ok=True)
     subprocess.Popen(  # noqa: S603
-        [sys.executable, "-m", "tth.expert.server"], stdout=log.open("a"), stderr=subprocess.STDOUT,
+        [sys.executable, "-m", "tth.expert.server", "--idle-exit", "600"], stdout=log.open("a"), stderr=subprocess.STDOUT,
         start_new_session=True,
     )  # fmt: skip
+    client = ExpertClient()
     for _ in range(40):
         time.sleep(0.25)
-        if expert_reachable():
+        if client.card() is not None:
             return True
     return False
 
@@ -74,49 +78,29 @@ def finish(outcome: Outcome, args: argparse.Namespace) -> int:
     return 0 if outcome.decision == "stage" else 1
 
 
-def escalate_flow(env: ProductEnv, ep_messages: list, assume_yes: bool) -> Outcome:
-    from tth.a2a.client import ask_expert, expert_reachable
-    from tth.a2a.payload import build_payload
-    from tth.agent.product import os_label
-    from tth.safety.rewriter import rewrite, selection_part
+class ConsentPrompt:
+    """Every consent question goes through here, and the only yes comes from the user's own terminal."""
 
-    s = ui.s
-    reason = env.reason or "could not verify locally"
-    p = build_payload(env.request, ep_messages, reason, os_label(), env.shell)
-    err(f"\n  {s.yellow}{s.bold}can't verify this locally. Ask the expert agent?{s.reset}  {s.dim}{reason}{s.reset}")
-    err(f"  {s.dim}This exact text would be sent (redacted: {', '.join(p.redactions) or 'nothing'}):{s.reset}")
-    for line in p.text.splitlines():
-        err(f"  {s.dim}│{s.reset} {line}")
-    auto_yes = (
-        assume_yes
-        or os.environ.get("TTH_AUTO_ESCALATE", "").lower() in ("1", "true", "yes")
-        or os.environ.get("TTH_YES", "").lower() in ("1", "true", "yes")
-    )
-    ans = "y" if auto_yes else _read_tty("  Send it? [y/N] ")
-    if ans.lower() not in ("y", "yes"):
-        return Outcome("declined", message="Not sent. Nothing staged.")
-    if not expert_reachable() and not _start_expert():
-        return Outcome("failed", message=f"{s.red}The expert agent isn't reachable.{s.reset} Start it with: tth expert")
-    a = ask_expert(p.text)
-    if not a.command:
-        return Outcome("failed", message=f"The expert didn't give a command: {a.explanation}")
-    rw = rewrite(a.command, cwd=env.cwd)
-    if rw.staged is None:
-        notes = "; ".join(rw.notes)
-        return Outcome(
-            "failed", message=f"{s.red}The safety layer refused the expert's command:{s.reset} {a.command} ({notes})"
+    def confirm(self, request: ConsentRequest) -> bool:
+        ui.consent(
+            request.destination, request.text, request.redactions, request.reason, request.is_local, request.follow_up
         )
-    err(f"  {s.dim}expert: {a.explanation}{s.reset}")
-    # Verify the expert's answer the same way as a local one: dry-run its read/selection part.
-    verified = False
-    if selection_part(a.command) is not None:
-        r = env.tools.call("dry_run", {"command": a.command})
-        verified = r.ok
-        from tth.trace.schema import Call
+        return _read_tty("  Send it? [y/N] ").lower() in ("y", "yes")
 
-        ui.event(TraceEvent(episode="expert", domain="shell", step=0, call=Call(tool="dry_run", args={"command": a.command}),
-                            result=r.data, ok=r.ok))  # fmt: skip
-    return Outcome("stage", rw.staged, rw.tier.label, rw.notes, origin="expert", verified=verified)
+    def status(self, text: str) -> None:
+        ui.note(f"expert: {text}")
+
+
+def escalate_flow(env: ProductEnv, messages: list) -> Outcome:
+    result = escalate(env, messages, ConsentPrompt(), ExpertClient(), start_expert=_start_expert)
+    if result.decision != "stage":
+        return Outcome(result.decision, message=printable(result.message))
+    if result.explanation:
+        ui.note(f"expert: {result.explanation}")
+    if result.test:
+        ui.event(TraceEvent(episode="expert", domain="shell", step=0, call=Call(tool="dry_run", args={"command": result.command}),
+                            result=result.test, ok=bool(result.test.get("ok"))))  # fmt: skip
+    return Outcome("stage", result.command, result.tier, result.notes, origin="expert", verified=result.verified)
 
 
 def _make_policy(args: argparse.Namespace, config: Config) -> object | None:
@@ -173,7 +157,7 @@ def cmd_run(args: argparse.Namespace) -> int:
             return finish(outcome, args)
         if env.decision == "ask":
             return finish(Outcome("ask", message=f"{ui.s.bold}tth asks:{ui.s.reset} {env.reason}"), args)
-        return finish(escalate_flow(env, ep.messages, args.yes), args)
+        return finish(escalate_flow(env, ep.messages), args)
     finally:
         env.close()
 
@@ -275,7 +259,7 @@ def cmd_expert(args: argparse.Namespace) -> int:
     except ImportError:
         ui.problem("The expert server isn't installed.", "Run: pip install 'tth[expert]'")
         return 1
-    expert_main()
+    expert_main(args.rest)
     return 0
 
 
@@ -298,14 +282,15 @@ def main(argv: list[str] | None = None) -> int:
                    help="llama-server URL for --backend openai")  # fmt: skip
     r.add_argument("--model", default="local")
     r.add_argument("--budget", type=int, default=None)
-    r.add_argument("--yes", action="store_true", help="auto-approve escalation (for recorded runs only)")
     r.add_argument("--json", action="store_true", help="print the outcome as JSON")
     r.set_defaults(fn=cmd_run)
     i = sub.add_parser("init", help="print shell integration")
     i.add_argument("shell", choices=["zsh", "bash"])
     i.set_defaults(fn=cmd_init)
     sub.add_parser("setup", help="check the install").set_defaults(fn=cmd_setup)
-    sub.add_parser("expert", help="run the reference A2A expert").set_defaults(fn=cmd_expert)
+    e = sub.add_parser("expert", help="run the reference A2A expert")
+    e.add_argument("rest", nargs=argparse.REMAINDER)
+    e.set_defaults(fn=cmd_expert)
     m = sub.add_parser("mcp", help="serve read-only probes over MCP (stdio)")
     m.add_argument("rest", nargs=argparse.REMAINDER)
     m.set_defaults(fn=cmd_mcp)

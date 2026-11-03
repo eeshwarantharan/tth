@@ -24,6 +24,11 @@ def err(text: str = "") -> None:
     print(text, file=sys.stderr, flush=True)
 
 
+def printable(text: object) -> str:
+    """Text from a model or an expert can't be allowed to move the cursor or rewrite the screen."""
+    return "".join(c if c.isprintable() or c in "\n\t" else "�" for c in str(text))
+
+
 @dataclass
 class Outcome:
     """How a request ended, in terms the user can act on."""
@@ -43,7 +48,7 @@ class Outcome:
 
 
 def _clip(text: object, limit: int = 72) -> str:
-    s = " ".join(str(text).split())
+    s = " ".join(printable(text).split())
     return s if len(s) <= limit else s[: limit - 1] + "…"
 
 
@@ -138,6 +143,25 @@ class TerminalRenderer:
                 err(f"  {s.dim}note: {note}{s.reset}")
         elif o.message:
             err(f"  {o.message}")
+
+    def consent(
+        self, destination: str, text: str, redactions: list[str], reason: str, is_local: bool, follow_up: bool
+    ) -> None:
+        s = self.s
+        if follow_up:
+            err(f"\n  {s.yellow}{s.bold}The expert asks to see more.{s.reset}  {s.dim}{printable(reason)}{s.reset}")
+        else:
+            err(
+                f"\n  {s.yellow}{s.bold}Can't verify this locally. Ask for help?{s.reset}  {s.dim}{printable(reason)}{s.reset}"
+            )
+        where = "stays on this machine" if is_local else f"{s.yellow}it may leave this machine{s.reset}"
+        err(f"  This text would go to {printable(destination)} ({where}).")
+        err(f"  {s.dim}Removed from it: {', '.join(redactions) or 'nothing'}{s.reset}")
+        for line in printable(text).splitlines():
+            err(f"  {s.dim}│{s.reset} {line}")
+
+    def note(self, text: str) -> None:
+        err(f"  {self.s.dim}{printable(text)}{self.s.reset}")
 
     def problem(self, text: str, fix: str = "") -> None:
         err(f"{self.s.red}{text}{self.s.reset}" + (f" {fix}" if fix else ""))
