@@ -15,7 +15,6 @@ dependencies = [
   "tree-sitter-bash>=0.23",
   "mcp>=1.2",
   "a2a-sdk>=0.2",
-  "pillow>=13.0.0",
 ]
 
 [project.optional-dependencies]
@@ -48,6 +47,8 @@ ignore = ["S101", "S603", "S607", "S311", "E501"]  # line length is left to the 
 [tool.pyright]
 include = ["src", "train", "evals", "tests"]
 pythonVersion = "3.11"
+venvPath = "."
+venv = ".venv"
 typeCheckingMode = "standard"
 reportMissingTypeStubs = false
 # python-chess InfoDict keys are optional in the stubs; Stockfish always returns score/pv at a depth limit.

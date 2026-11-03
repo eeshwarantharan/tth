@@ -120,7 +120,11 @@ def escalate_flow(request: str, ep_messages: list, reason: str, cwd: Path, shell
     )
     for line in p.text.splitlines():
         err(f"  {DIM}│{RESET} {line}")
-    auto_yes = assume_yes or os.environ.get("TTH_AUTO_ESCALATE", "").lower() in ("1", "true", "yes") or os.environ.get("TTH_YES", "").lower() in ("1", "true", "yes")
+    auto_yes = (
+        assume_yes
+        or os.environ.get("TTH_AUTO_ESCALATE", "").lower() in ("1", "true", "yes")
+        or os.environ.get("TTH_YES", "").lower() in ("1", "true", "yes")
+    )
     ans = "y" if auto_yes else _read_tty("  Send it? [y/N] ")
     if ans.lower() not in ("y", "yes"):
         err(f"  {DIM}Not sent. Nothing staged (local-only).{RESET}")
@@ -273,7 +277,7 @@ def main(argv: list[str] | None = None) -> int:
                    help="llama-server URL for --backend openai")  # fmt: skip
     r.add_argument("--model", default="local")
     r.add_argument("--budget", type=int, default=6)
-    r.add_argument("--yes", action="store_true", help="auto-approve escalation (for recorded demos only)")
+    r.add_argument("--yes", action="store_true", help="auto-approve escalation (for recorded runs only)")
     r.set_defaults(fn=cmd_run)
     i = sub.add_parser("init", help="print shell integration")
     i.add_argument("shell", choices=["zsh", "bash"])

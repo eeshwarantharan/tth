@@ -1,3 +1,5 @@
+> **Historical.** The v0.1 Kaggle procedure, kept for reference. The demo video step no longer exists. Phase 5 of the [roadmap](../ROADMAP.md) replaces this.
+
 # Runbook — Kaggle (2× T4): train, evaluate, render the video
 
 ```

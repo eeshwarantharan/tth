@@ -1,0 +1,12 @@
+tth
+Copyright 2026 Tharaneeshwaran V U and tth contributors
+
+This product is licensed under the Apache License, Version 2.0. See LICENSE.
+
+Base model
+----------
+tth is designed to run with Qwen2.5-Coder-1.5B-Instruct by the Qwen team,
+Alibaba Cloud, licensed under the Apache License, Version 2.0.
+https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct
+
+The model weights are not part of this repository.

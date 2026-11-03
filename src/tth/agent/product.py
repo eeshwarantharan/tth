@@ -62,7 +62,9 @@ class ProductEnv:
 
         if call.name == "stage":
             staged_cmd = call.args.get("command", "")
-            if self.last_verified and any(v in staged_cmd for v in ("$lines", "$count", "$output", "$result", "$sample", "$data")):
+            if self.last_verified and any(
+                v in staged_cmd for v in ("$lines", "$count", "$output", "$result", "$sample", "$data")
+            ):
                 call.args["command"] = self.last_verified
 
         r = self.box.call(call.name, call.args)
@@ -76,7 +78,9 @@ class ProductEnv:
             elif not r.ok and cmd:
                 # If command modifies files (changes-files tier), it is not a broken command;
                 # remember it as a valid candidate to stage!
-                if r.data.get("tier") in ("changes-files", "read-only") and "not dry-runnable" in str(r.data.get("note", "")):
+                if r.data.get("tier") in ("changes-files", "read-only") and "not dry-runnable" in str(
+                    r.data.get("note", "")
+                ):
                     self.last_candidate = cmd
                 else:
                     err_msg = r.data.get("error") or r.data.get("stderr", "failed")
@@ -93,7 +97,9 @@ class ProductEnv:
     def _auto_stage_verified(self) -> StepOutcome | None:
         target = self.last_verified or self.last_candidate
         if target:
-            explanation = "Verified locally via dry_run." if target == self.last_verified else "Selected based on context."
+            explanation = (
+                "Verified locally via dry_run." if target == self.last_verified else "Selected based on context."
+            )
             r = self.box.call("stage", {"command": target, "explanation": explanation})
             if r.decision == "stage":
                 self.decision = "stage"

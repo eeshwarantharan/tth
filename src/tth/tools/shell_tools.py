@@ -182,7 +182,11 @@ class ShellToolbox:
         if r.timed_out:
             data["error"] = f"timed out after {self.timeout}s"
             ok = False
-        elif not out and r.stderr.strip() and not any(r.stderr.strip().startswith(s) for s in ("stat: ./.env", "stat: ./")):
+        elif (
+            not out
+            and r.stderr.strip()
+            and not any(r.stderr.strip().startswith(s) for s in ("stat: ./.env", "stat: ./"))
+        ):
             data["error"] = r.stderr.strip()[:600]
             ok = False
         return ToolResult(data, ok=ok)

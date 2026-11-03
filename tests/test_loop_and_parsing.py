@@ -48,14 +48,14 @@ def test_prose_is_not_a_call() -> None:
 
 def test_xml_function_call() -> None:
     text = (
-        '<tools>\n'
+        "<tools>\n"
         '  <function name="stage">\n'
-        '    <arguments>\n'
+        "    <arguments>\n"
         '      <command>find . -name "*.py" -type f | wc -l</command>\n'
-        '      <explanation>Count Python files</explanation>\n'
-        '    </arguments>\n'
-        '  </function>\n'
-        '</tools>'
+        "      <explanation>Count Python files</explanation>\n"
+        "    </arguments>\n"
+        "  </function>\n"
+        "</tools>"
     )
     t = parse_qwen(text)
     assert len(t.tool_calls) == 1
@@ -64,4 +64,3 @@ def test_xml_function_call() -> None:
         "command": 'find . -name "*.py" -type f | wc -l',
         "explanation": "Count Python files",
     }
-

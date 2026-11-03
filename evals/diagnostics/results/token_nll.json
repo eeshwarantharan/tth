@@ -1,0 +1,121 @@
+{
+ "model": "models/qwen2.5-coder-1.5b-4bit",
+ "data": "data/shell/teacher_verified.jsonl (first 5 rows)",
+ "arms": {
+  "A_base": {
+   "mean_nll": 2.053,
+   "n_tokens": 200,
+   "trained_fraction": 0.072,
+   "tool_call_tags_share_of_loss": 0.58,
+   "tags": {
+    "<tool_call>": {
+     "nll": 17.069,
+     "p": 3.8637670424719187e-08,
+     "n": 7
+    },
+    "</tool_call>": {
+     "nll": 16.918,
+     "p": 4.491509494066823e-08,
+     "n": 7
+    },
+    "<|im_end|>": {
+     "nll": 7.378,
+     "p": 0.0006246981732210231,
+     "n": 7
+    }
+   }
+  },
+  "B_shell": {
+   "mean_nll": 0.893,
+   "n_tokens": 200,
+   "trained_fraction": 0.072,
+   "tool_call_tags_share_of_loss": 0.813,
+   "tags": {
+    "<tool_call>": {
+     "nll": 10.429,
+     "p": 2.9557277882958416e-05,
+     "n": 7
+    },
+    "</tool_call>": {
+     "nll": 10.324,
+     "p": 3.282474594158139e-05,
+     "n": 7
+    },
+    "<|im_end|>": {
+     "nll": 0.112,
+     "p": 0.8940315631080629,
+     "n": 7
+    }
+   }
+  },
+  "C_chess_sft": {
+   "mean_nll": 0.774,
+   "n_tokens": 200,
+   "trained_fraction": 0.072,
+   "tool_call_tags_share_of_loss": 0.757,
+   "tags": {
+    "<tool_call>": {
+     "nll": 8.401,
+     "p": 0.0002247119260184248,
+     "n": 7
+    },
+    "</tool_call>": {
+     "nll": 8.341,
+     "p": 0.00023850964004228575,
+     "n": 7
+    },
+    "<|im_end|>": {
+     "nll": 0.034,
+     "p": 0.9665842889756814,
+     "n": 7
+    }
+   }
+  },
+  "C0_chess_grpo": {
+   "mean_nll": 0.774,
+   "n_tokens": 200,
+   "trained_fraction": 0.072,
+   "tool_call_tags_share_of_loss": 0.756,
+   "tags": {
+    "<tool_call>": {
+     "nll": 8.373,
+     "p": 0.0002310387581850405,
+     "n": 7
+    },
+    "</tool_call>": {
+     "nll": 8.349,
+     "p": 0.000236536567862528,
+     "n": 7
+    },
+    "<|im_end|>": {
+     "nll": 0.03,
+     "p": 0.9707541695437615,
+     "n": 7
+    }
+   }
+  },
+  "C_chess_shell": {
+   "mean_nll": 0.682,
+   "n_tokens": 200,
+   "trained_fraction": 0.072,
+   "tool_call_tags_share_of_loss": 0.839,
+   "tags": {
+    "<tool_call>": {
+     "nll": 8.179,
+     "p": 0.0002804919780105661,
+     "n": 7
+    },
+    "</tool_call>": {
+     "nll": 8.168,
+     "p": 0.00028368521904253264,
+     "n": 7
+    },
+    "<|im_end|>": {
+     "nll": 0.021,
+     "p": 0.9796795407307275,
+     "n": 7
+    }
+   }
+  }
+ }
+}

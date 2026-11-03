@@ -1,4 +1,4 @@
-.PHONY: test lint eval report colab demo
+.PHONY: test lint eval report colab
 
 test:
 	uv run pytest
@@ -14,6 +14,3 @@ report:
 
 colab:         ## bundle code + verified data for train/colab_tth.ipynb
 	scripts/pack_colab.sh
-
-demo:         ## render demo/tth.gif (+ mp4) from real eval traces; run after `make eval`
-	uv run python -m demo.render

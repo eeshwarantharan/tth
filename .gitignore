@@ -14,3 +14,13 @@ tth_colab.zip
 adapters_out.zip
 tth_results.zip
 WISPR_FLOW_DEMO.md
+*.zip
+*.log
+*.safetensors
+dist/
+build/
+*.egg-info/
+.ipynb_checkpoints/
+.coverage
+.idea/
+.vscode/

@@ -1,4 +1,4 @@
-"""Unified trajectory schema shared by product runs, training rollouts, evals and the demo."""
+"""Unified trajectory schema shared by product runs, training rollouts and evals."""
 
 from __future__ import annotations
 

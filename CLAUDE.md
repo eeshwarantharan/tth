@@ -9,7 +9,10 @@ A small on-device model (~1.5B) that turns plain-English requests into shell com
 The model learns this discipline in a **chess training environment** (hidden board, verifiable moves, tool calls with randomized schemas). It then transfers the habit to the shell with a short fine-tune. Chess is the training ground; the terminal is the product.
 
 ### The pitch, in one line
-Most terminal requests are easy, so don't pay a frontier model for them. tth handles easy tasks locally and escalates hard ones.
+A small model that runs on your machine, wrapped in deterministic safety: private, offline, and it escalates only with your consent.
+
+### Current direction
+`docs/ROADMAP.md` is the plan and `docs/analysis/2026-11-audit.md` the evidence behind it. Where this file and the roadmap disagree on layout or milestones, the roadmap wins; the invariants below always apply. Everything must measurably improve the small model on the shipped artifact.
 
 ### Protocol roles
 - **MCP**: how the model sees the world (shell probes in the product; board tools in training).
@@ -26,7 +29,7 @@ Never weaken these without explicit approval in the conversation. If a task seem
 4. **Destructive commands are never staged raw.** Deletions become a preview (list matches) or a move-to-trash. `mv`/`cp` get no-clobber. Any rewrite is shown to the user, never applied silently.
 5. **Escalation requires consent.** Before any A2A call, show the exact payload. Redact secrets (env values, tokens, keys, `.env` contents, `~/.ssh`). The user can decline; the default is local-only.
 6. **Secret paths are never probed.** `~/.ssh`, `~/.aws`, `~/.gnupg`, keychains, `.env*`, browser profiles. This is an extra layer on top of the sandbox.
-7. **No fabricated results.** Never invent eval numbers, benchmark scores or demo footage. If an eval wasn't run, say so.
+7. **No fabricated results.** Never invent eval numbers, benchmark scores or traces. If an eval wasn't run, say so.
 
 ## Repository layout
 
@@ -47,7 +50,6 @@ train/
   sft/  grpo/   # training configs and scripts
 experts/        # A2A expert agents used in training and in the product
 evals/          # eval harness + task suites
-demo/           # trace-driven GIF renderer
 tests/
 ```
 
@@ -69,7 +71,6 @@ uv run pytest tests/safety       # safety suite (must always pass)
 uv run ruff check . && uv run ruff format .
 uv run pyright
 make eval                        # full eval harness
-make demo                        # render the demo GIF from recorded traces
 ```
 
 Before reporting any task as done: tests, lint and type check pass, and the safety suite passes.
@@ -114,7 +115,7 @@ Verifiers (`python-chess`, Stockfish, container execution) assign reward. The te
 5. Ablations: (a) base model, (b) shell-only training, (c) chess → shell, (d) same-size non-chess synthetic tool data → shell.
 
 ### Unified trace format
-Product runs and training rollouts write the same JSONL schema, so evals and the demo share one renderer:
+Product runs and training rollouts write the same JSONL schema, so evals and the project site share one renderer:
 ```json
 {"episode": "id", "domain": "chess|shell", "step": 3,
  "call": {"tool": "dry_run", "args": {}}, "result": {}, "ok": true,
@@ -133,26 +134,6 @@ Report all of these, including failures:
 
 Never tune on eval tasks. Held-out splits live in `evals/` and are never imported by `train/`.
 
-## The demo (this is what makes tth land)
-
-One GIF, about 30–45s, rendered from **real recorded traces**. No hand-made frames of model behavior.
-
-**Scene 1 — The board (≈12s).** Split screen: the chessboard on the left, the live tool-call log on the right. The model inspects the board, simulates a move, gets *rejected* (illegal or stale state), re-inspects, simulates again, commits. Each call lights up the matching piece or square.
-
-**Scene 2 — Knowing its limits (≈6s).** A hard position. The log shows "can't verify locally → escalating"; the expert agent's answer arrives and the move is committed.
-
-**Scene 3 — The same habits, in your terminal (≈15s).** A wipe transition to a terminal with the same log panel. Request: *"sum the token costs for failed tasks in metrics.jsonl"*. The log shows inspect → probe file (real key names appear) → dry-run (error, fixed) → dry-run (ok) → command appears on the prompt with a green read-only badge. The log rows line up visually with Scene 1's rows (inspect ↔ inspect, simulate ↔ dry-run, commit ↔ stage).
-
-**Scene 4 — Escalation in the terminal (≈8s).** A hard request → consent prompt showing the redacted payload → user accepts → staged answer.
-
-**End card:** *tth — small but good.* plus the install command.
-
-Implementation:
-- `demo/render.py` reads trace JSONL; board frames come from `python-chess` SVG → PNG; the log panel is rendered by the same code for both domains.
-- Terminal scenes are recorded with VHS (`.tape` files in `demo/`) running the real CLI against fixture directories.
-- Compose with ffmpeg; output `demo/tth.gif` plus an mp4. `make demo` regenerates everything from committed traces and tapes.
-- Keep the selected trace IDs in `demo/manifest.json` so anyone can verify the footage is real.
-
 ## Milestones
 
 | # | Goal | Done when |
@@ -162,7 +143,7 @@ Implementation:
 | M2 | Teacher trajectories → verified → SFT | SFT beats base on held-out chess tasks |
 | M3 | GRPO with escalation cost | Escalation precision/recall reported |
 | M4 | Shell transfer + escalation over A2A | Full eval table incl. ablations |
-| M5 | Demo + release (GGUF, MLX, model card, data card) | `make demo` reproduces the GIF; model card lists limits |
+| M5 | Release (GGUF, MLX, model card, data card) | Model card lists limits; site replays real traces |
 
 Each milestone must be useful on its own if the project stopped there.
 
@@ -181,4 +162,4 @@ Each milestone must be useful on its own if the project stopped there.
 - [ ] Data card for released trajectories (how they were generated and verified)
 - [ ] GGUF + MLX builds with checksums
 - [ ] `pip install tth` → `tth setup` works on a clean macOS and Linux machine
-- [ ] Demo GIF regenerated from committed traces
+- [ ] Project site rebuilt from committed traces and results

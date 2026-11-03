@@ -1,3 +1,5 @@
+> **Superseded, November 2026.** Kept for history only. Its diagnosis of the training failure, its Rust-first ordering and its unmeasured latency and accuracy figures did not hold up. See the [audit](../analysis/2026-11-audit.md) and the [roadmap](../ROADMAP.md).
+
 # tth Technical Architectural Versioning & Upgrade Specification
 
 > **Document Version:** 2.0.0 (Rust Core Transition Edition)  
