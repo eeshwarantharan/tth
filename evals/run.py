@@ -9,8 +9,10 @@ uv run python -m evals.run --arm frontier --policy nemotron
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
 import os
+import re
 import time
 from pathlib import Path
 from typing import Any
@@ -69,6 +71,17 @@ def _policy(args: argparse.Namespace) -> Any:
     return MLXPolicy(
         model_path=args.model or os.environ.get("TTH_MODEL", DEV_MODEL), adapter_path=args.adapter, temperature=0.0
     )
+
+
+def scrub(path: Path) -> None:
+    """Results get committed, so the local username (from `ls -l` output) and home folder stay out of them."""
+    if not path.exists():
+        return
+    text = path.read_text().replace(str(Path.home()), "~")
+    user = getpass.getuser()
+    if len(user) >= 3:
+        text = re.sub(rf"\b{re.escape(user)}\b", "user", text)
+    path.write_text(text)
 
 
 def run_suite(name: str, jobs: list, policy: Any, arm: str, budget: int, results: Path) -> list[dict]:
@@ -173,6 +186,8 @@ def main() -> None:
     usage = getattr(policy, "usage", None)
     if usage:
         (results / f"{args.arm}__usage.json").write_text(json.dumps(usage))
+    for path in [*results.glob(f"{args.arm}__*.jsonl"), *(results / "traces").glob(f"{args.arm}__*.jsonl")]:
+        scrub(path)
     manifest.save(results, record)
 
 

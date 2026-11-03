@@ -115,3 +115,15 @@ def test_committed_results_all_have_manifests() -> None:
     if results.exists():
         find_arms(results)
     assert (ROOT / "evals" / "results-v0.1" / "README.md").exists()
+
+
+def test_committed_results_contain_no_local_username(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from evals.run import scrub
+
+    monkeypatch.setattr("getpass.getuser", lambda: "someperson")
+    f = tmp_path / "t.jsonl"
+    f.write_text(f"-rw-r--r-- 1 someperson staff 5 a.txt {Path.home()}/x\n")
+    scrub(f)
+    text = f.read_text()
+    assert "someperson" not in text
+    assert str(Path.home()) not in text
