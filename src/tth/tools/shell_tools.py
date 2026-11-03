@@ -82,7 +82,13 @@ class ShellToolbox:
         spec = next((t for t in TOOL_DEFS if t.name == name), None)
         if fn is None or spec is None:
             return ToolResult({"error": f"unknown tool '{name}'"}, ok=False)
-        allowed = set(spec.parameters["properties"])
+        props = spec.parameters["properties"]
+        allowed = set(props)
+        not_strings = sorted(
+            k for k, v in args.items() if props.get(k, {}).get("type") == "string" and not isinstance(v, str)
+        )
+        if not_strings:
+            return ToolResult({"error": f"bad arguments: {not_strings} must be strings"}, ok=False)
         extra = sorted(set(args) - allowed)
         missing = [k for k in spec.parameters["required"] if k not in args]
         if extra or missing:

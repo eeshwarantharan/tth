@@ -131,7 +131,10 @@ def _rewrite_simple(cmd: SimpleCommand) -> tuple[list[str], list[str] | None, st
                 skip_empty = False
                 continue
             skip_empty = False
-            argv.append("-i.bak" if a.startswith("-i") and not a.startswith("-i.") else r)
+            if a.startswith("-") and not a.startswith("--") and a.endswith("i"):  # clusters like -ni and -Ei
+                argv += [a[:-1], "-i.bak"]
+            else:
+                argv.append(r)
         return argv, None, "sed -i keeps a .bak backup"
     if name == "sort":
         return None
@@ -146,6 +149,15 @@ def rewrite(command: str, cwd: str | os.PathLike[str] | None = None) -> Rewrite:
         rw.notes.append("refused: " + "; ".join(c.reasons))
         return rw
 
+    # What we can't parse, we can't vouch for.
+    unsafe_to_show = {"syntax error", "history expansion", "zsh-only syntax", "line continuation"} & set(
+        c.parsed.issues
+    )
+    if unsafe_to_show:
+        rw.staged = None
+        rw.notes.append(f"refused: the shell wouldn't run what we can see ({', '.join(sorted(unsafe_to_show))})")
+        return rw
+
     # Constructs the parser cannot see inside (loops, functions) are refused
     # outright when they mention anything that could destroy data.
     if c.parsed.issues and _RISKY_TEXT.search(command):
@@ -157,13 +169,21 @@ def rewrite(command: str, cwd: str | os.PathLike[str] | None = None) -> Rewrite:
     base = Path(cwd) if cwd else Path.cwd()
     for sc in c.parsed.commands:
         for r in sc.redirects:
-            if r.op in (">", "&>") and r.target and r.target not in ("/dev/null",):
+            clobbers = r.op in (">", "&>") or (r.op == ">&" and not (r.target or "").isdigit())
+            if clobbers and r.target and r.target != "/dev/null":
                 target = Path(os.path.expanduser(r.target))
                 if not target.is_absolute():
                     target = base / target
                 if target.exists():
                     rw.staged = None
                     rw.notes.append(f"refused: '>' would overwrite existing file {r.target}")
+                    return rw
+        if sc.name.rsplit("/", 1)[-1] == "tee" and "-a" not in sc.argv:
+            for arg in sc.argv[1:]:
+                target = Path(os.path.expanduser(arg))
+                if not arg.startswith("-") and (target if target.is_absolute() else base / target).exists():
+                    rw.staged = None
+                    rw.notes.append(f"refused: tee would overwrite existing file {arg}")
                     return rw
 
     if not c.destructive:

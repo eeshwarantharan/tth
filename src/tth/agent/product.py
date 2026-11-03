@@ -25,7 +25,13 @@ class ProductEnv:
         self.reason: str = ""
         self.last_verified: str | None = None
         self.last_candidate: str | None = None
+        self.staged_from: str | None = None  # the command as proposed, before any rewrite
         self._failed_commands: dict[str, str] = {}  # command -> error message
+
+    @property
+    def verified(self) -> bool:
+        """True only when this exact command passed a dry-run."""
+        return self.staged_from is not None and self.staged_from.strip() == (self.last_verified or "").strip()
 
     def reset(self) -> EpisodeStart:
         return EpisodeStart(system=SHELL_SYSTEM.format(os=os_label(), shell=self.box.shell), user=self.request,
@@ -90,6 +96,7 @@ class ProductEnv:
             self.decision = r.decision
             if r.decision == "stage":
                 self.staged = r.data
+                self.staged_from = call.args.get("command")
             self.reason = str(call.args.get("reason") or call.args.get("question") or "")
             return StepOutcome(r.data, ok=True, done=True, decision=r.decision)
         return StepOutcome(r.data, ok=r.ok)
@@ -104,6 +111,7 @@ class ProductEnv:
             if r.decision == "stage":
                 self.decision = "stage"
                 self.staged = r.data
+                self.staged_from = target
                 return StepOutcome(r.data, ok=True, done=True, decision="stage")
         return None
 

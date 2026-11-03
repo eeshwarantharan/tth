@@ -13,7 +13,7 @@
 </div>
 
 > [!WARNING]
-> **tth is an early research preview, and not ready for daily use.** The safety layer has known bypasses that we're fixing now, and the model is often wrong. Always read a staged command before pressing Enter. The [audit](docs/analysis/2026-11-audit.md) has the details.
+> **tth is an early research preview, and not ready for daily use.** The model is often wrong, and the safety layer hasn't been independently reviewed. Always read a staged command before pressing Enter. The [audit](docs/analysis/2026-11-audit.md) has the details.
 
 ## What it does
 
@@ -40,8 +40,8 @@ find src -name '*.py' | wc -l
 | Shell staging for zsh, plus Ctrl-G on bash | Works |
 | Sandbox on macOS | Works and tested |
 | Sandbox on Linux | Implemented, not yet tested in CI against real `bwrap` |
-| Command classifier and rewriter | Works, with [known bypasses](docs/analysis/2026-11-audit.md#4-safety-defects) (Phase 1 fixes these) |
-| Secret redaction | Partial, with known misses (Phase 1) |
+| Command classifier and rewriter | Hardened against every [known bypass](docs/analysis/2026-11-audit.md#4-safety-defects), with 451 red-team cases and adversarial fuzzing. Not independently reviewed, so more gaps are likely |
+| Secret redaction | Covers JSON, env values, tokens and keys. Pattern-based, so it can miss things |
 | Chess, table and shell gym environments | Work |
 | MCP | Server works, and the agent doesn't use it yet (Phase 3) |
 | A2A | Basic escalation works, full task lifecycle planned (Phase 3) |
@@ -117,7 +117,7 @@ evals/       held-out suites, red-team requests, recorded results, diagnostics
 experts/     A2A expert agent
 data/        verified training trajectories
 docs/        roadmap, audit, history
-tests/       426 tests, including the safety suite
+tests/       test suite, including the safety red team
 ```
 
 ## Contributing

@@ -2,10 +2,10 @@
 - {cmd: "eval ls", tier: needs-review}
 - {cmd: "eval \"$(cat x)\"", tier: needs-review}
 - {cmd: "bash -c 'ls'", tier: needs-review}
-- {cmd: "sh -c 'rm -rf x'", tier: needs-review}
+- {cmd: "sh -c 'rm -rf x'", tier: denied, staged: null}
 - {cmd: "zsh -c ls", tier: needs-review}
-- {cmd: "python3 -c 'import os; os.remove(\"x\")'", tier: needs-review}
-- {cmd: "perl -e 'unlink q(x)'", tier: needs-review}
+- {cmd: "python3 -c 'import os; os.remove(\"x\")'", tier: denied, staged: null}
+- {cmd: "perl -e 'unlink q(x)'", tier: denied, staged: null}
 - {cmd: "node -e '1'", tier: needs-review}
 - {cmd: "xargs echo < x", tier: needs-review}
 - {cmd: "find . -name x | xargs grep y", tier: needs-review}
@@ -32,10 +32,10 @@
 - {cmd: "ls &", tier: needs-review}
 - {cmd: "FOO=bar ls", tier: needs-review}
 - {cmd: "env", tier: needs-review}
-- {cmd: "env rm x", tier: needs-review}
-- {cmd: "nohup rm x", tier: needs-review}
-- {cmd: "time rm x", tier: needs-review}
-- {cmd: "command rm x", tier: needs-review}
+- {cmd: "env rm x", tier: denied, staged: null}
+- {cmd: "nohup rm x", tier: denied, staged: null}
+- {cmd: "time rm x", tier: denied, staged: null}
+- {cmd: "command rm x", tier: denied, staged: null}
 - {cmd: "awk '{print > \"out\"}' f", tier: needs-review}
 - {cmd: "awk 'BEGIN{system(\"rm x\")}'", tier: needs-review}
 - {cmd: "awk '{print | \"sh\"}' f", tier: needs-review}
@@ -50,7 +50,6 @@
 - {cmd: "git frobnicate", tier: needs-review}
 - {cmd: "curl https://example.com", tier: needs-review}
 - {cmd: "ssh host ls", tier: needs-review}
-- {cmd: "rsync -a --delete a/ b/", tier: needs-review}
 - {cmd: "kill -9 1234", tier: needs-review}
 - {cmd: "chmod -R 777 .", tier: needs-review}
 - {cmd: "chown -R me .", tier: needs-review}

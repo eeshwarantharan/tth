@@ -18,9 +18,9 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from tth.safety.secrets import secret_dirs
+from tth.safety.secrets import is_secret_name, secret_dirs
 
-DEFAULT_TIMEOUT = 8.0
+DEFAULT_TIMEOUT = 3.0
 DEFAULT_CAP = 8 * 1024
 
 
@@ -61,8 +61,28 @@ def macos_profile(tmpdir: str, writable: list[str] | None = None) -> str:
   (subpath {_sb_quote(tmpdir)}) (subpath {_sb_quote(os.path.realpath(tmpdir))}){extra})
 (deny file-read*
 {deny_reads}
-  (regex #"/\\.env(\\.[^/]*)?$"))
+  (regex #"/\\.[eE][nN][vV][^/]*$")
+  (regex #"/id_(rsa|dsa|ecdsa|ed25519)(\\.pub)?$")
+  (regex #"\\.(pem|key|p12|pfx|kdbx|jks|keystore)$"))
 """
+
+
+def secret_files_under(root: str, limit: int = 5000) -> list[str]:
+    """Secret files below root. bwrap has no regex rules, so each one gets masked by path.
+
+    Bounded so a huge tree can't stall a probe. Past the limit the tool layer's checks still apply.
+    """
+    found: list[str] = []
+    seen = 0
+    for folder, dirs, files in os.walk(root):
+        dirs[:] = [d for d in dirs if d not in {".git", "node_modules", ".venv", "__pycache__"}]
+        for name in files:
+            seen += 1
+            if is_secret_name(name):
+                found.append(os.path.join(folder, name))
+            if seen >= limit:
+                return found
+    return found
 
 
 def bwrap_argv(cwd: str, tmpdir: str, writable: list[str] | None = None) -> list[str]:
@@ -78,6 +98,8 @@ def bwrap_argv(cwd: str, tmpdir: str, writable: list[str] | None = None) -> list
             argv += ["--ro-bind", "/dev/null", str(d)]
     for w in writable or []:
         argv += ["--bind", w, w]
+    for path in secret_files_under(cwd):
+        argv += ["--ro-bind", "/dev/null", path]
     argv += ["--chdir", cwd]
     return argv
 

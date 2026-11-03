@@ -184,8 +184,8 @@ def cmd_run(args: argparse.Namespace) -> int:
     logger = TraceLogger(STATE_DIR / "traces.jsonl")
     ep = run_episode(env, policy, budget=args.budget, logger=logger, on_event=log_row)
     if env.decision == "stage" and env.staged:
-        return stage_output(env.staged["command"], env.staged["tier"], env.staged.get("notes", []), args.out,
-                            "verified locally")  # fmt: skip
+        source = "verified locally" if env.verified else "not verified, read it carefully"
+        return stage_output(env.staged["command"], env.staged["tier"], env.staged.get("notes", []), args.out, source)
     if env.decision == "ask":
         err(f"\n  {BOLD}tth asks:{RESET} {env.reason}")
         return 1

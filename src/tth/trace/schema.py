@@ -35,6 +35,9 @@ class TraceLogger:
         self.path = Path(path) if path else None
         if self.path:
             self.path.parent.mkdir(parents=True, exist_ok=True)
+            # Traces hold probe output from the user's files, so only the user may read them.
+            self.path.touch(mode=0o600, exist_ok=True)
+            self.path.chmod(0o600)
 
     def write(self, event: TraceEvent) -> None:
         if not self.path:
