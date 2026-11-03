@@ -5,6 +5,8 @@
 
   <p><strong>Small but good.</strong> A local small-model agent that looks before it acts, never runs your command, and knows when to ask for help.</p>
 
+  <p><a href="https://eeshwarantharan.github.io/tth/">Project site</a> · <a href="docs/ROADMAP.md">Roadmap</a> · <a href="docs/analysis/2026-11-audit.md">Audit</a></p>
+
   <p>
     <a href="https://github.com/eeshwarantharan/tth/actions/workflows/ci.yml"><img src="https://github.com/eeshwarantharan/tth/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License: Apache 2.0"></a>
@@ -115,6 +117,7 @@ src/tth/     the product: CLI, agent loop, tools, safety, sandbox, escalation, r
 train/       gym environments (chess, shell, table), teacher data, SFT and GRPO
 evals/       held-out suites, red-team requests, recorded results, diagnostics
 experts/     A2A expert agent
+site/        project page, generated from committed results
 data/        verified training trajectories
 docs/        roadmap, audit, history
 tests/       test suite, including the safety red team

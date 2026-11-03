@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>tth, the tiny terminal helper</title>
+<meta name="description" content="A local small-model agent that looks before it acts, never runs your command, and asks before anything leaves your machine. An open RL gym and teacher-student training project.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23070A10'/%3E%3Cg fill='none' stroke='%235FCB5F' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M52 29V18a8 8 0 0 0-8-8H20a8 8 0 0 0-8 8v28a8 8 0 0 0 8 8h32'/%3E%3Cpath d='M22 22l10 10-10 10'/%3E%3Cpath d='M40 44h12'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap">
+<style>
+/* Layout: one long left-aligned reading column that widens where the machine speaks (terminal, gallery, charts).
+   Serif is the project's voice, from the logo. Mono is the machine's. The four safety tiers are the colour system. */
+:root {
+  --bg: #F1F3F5;
+  --panel: #FFFFFF;
+  --ink: #12161C;
+  --muted: #55606C;
+  --line: #D6DBE1;
+  --accent: #1B7A35;
+  --term: #070A10;
+  --term-panel: #0F141C;
+  --term-ink: #E8EBEF;
+  --term-muted: #8F99A6;
+  --term-line: #232A35;
+  --term-accent: #63CF63;
+  --ro: #1B7A35;
+  --cf: #8A5F00;
+  --nr: #B4480E;
+  --dn: #B42318;
+  --series-a: #1F5FBF;
+  --series-b: #C2410C;
+  --serif: "Source Serif 4", Charter, "Iowan Old Style", Georgia, serif;
+  --sans: "Instrument Sans", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --wide: 76rem;
+  --read: 41rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0B0E14; --panel: #121620; --ink: #EDEFF2; --muted: #99A2AE; --line: #262C37; --accent: #63CF63;
+    --term: #05070C; --term-panel: #0F141C; --term-line: #232A35;
+    --ro: #63CF63; --cf: #E3B341; --nr: #F0883E; --dn: #F47067;
+    --series-a: #4F8FEA; --series-b: #D56C20;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0B0E14; --panel: #121620; --ink: #EDEFF2; --muted: #99A2AE; --line: #262C37; --accent: #63CF63;
+  --term: #05070C; --term-panel: #0F141C; --term-line: #232A35;
+  --ro: #63CF63; --cf: #E3B341; --nr: #F0883E; --dn: #F47067;
+  --series-a: #4F8FEA; --series-b: #D56C20;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 1.0625rem/1.6 var(--sans); }
+.wrap {
+  max-width: var(--wide); margin-inline: auto;
+  padding-left: max(20px, env(safe-area-inset-left, 0px));
+  padding-right: max(20px, env(safe-area-inset-right, 0px));
+}
+a { color: inherit; text-underline-offset: 0.2em; text-decoration-thickness: 1px; text-decoration-color: var(--muted); }
+a:hover { text-decoration-color: currentColor; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+h1, h2, h3 { font-family: var(--serif); font-weight: 600; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(2.5rem, 1.5rem + 3.6vw, 4.25rem); line-height: 1.04; letter-spacing: -0.02em; }
+h2 { font-size: clamp(1.85rem, 1.4rem + 1.5vw, 2.6rem); line-height: 1.12; letter-spacing: -0.012em; }
+h3 { font-size: 1.25rem; line-height: 1.3; }
+p { margin: 0; max-width: var(--read); }
+code, .mono { font-family: var(--mono); font-size: 0.875em; }
+/* Exact characters matter here: ligatures would redraw <|im_end|> and -- as other glyphs. */
+code, pre, .mono, .term, .tier, .proto, .tip, .filters button, .chart svg text.value { font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
+p code, li code, td code { background: color-mix(in srgb, var(--line) 55%, transparent); padding: 0.1em 0.32em; border-radius: 4px; }
+ul, ol { margin: 0; padding: 0; list-style: none; }
+
+/* Header */
+.top { border-bottom: 1px solid var(--line); }
+.top .wrap { display: flex; align-items: center; gap: 1.5rem; padding-block: 0.85rem; flex-wrap: wrap; }
+.brand { display: inline-flex; align-items: center; gap: 0.55rem; text-decoration: none; font: 600 1.45rem/1 var(--serif); }
+.brand svg { width: 1.6rem; height: 1.6rem; color: var(--accent); }
+.top nav { display: flex; gap: 1.15rem; margin-left: auto; font-size: 0.9375rem; flex-wrap: wrap; }
+.top nav a { text-decoration: none; color: var(--muted); }
+.top nav a:hover { color: var(--ink); }
+
+/* Hero */
+.hero { padding-block: clamp(2.5rem, 6vw, 4.5rem) clamp(3rem, 6vw, 5rem); }
+.hero .wrap { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(2rem, 5vw, 4rem); align-items: start; }
+.hero-copy { display: grid; gap: 1.35rem; }
+.lede { font-size: 1.1875rem; line-height: 1.55; }
+.status {
+  display: inline-flex; align-items: center; gap: 0.5rem; justify-self: start;
+  font: 500 0.8125rem/1.3 var(--mono); color: var(--nr); border: 1px solid currentColor; border-radius: 99px; padding: 0.3rem 0.75rem;
+}
+.actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.button {
+  display: inline-block; padding: 0.6rem 1.05rem; border-radius: 7px; text-decoration: none; font-weight: 500; font-size: 0.9375rem;
+  border: 1px solid var(--line); background: var(--panel);
+}
+.button.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.button:hover { border-color: var(--ink); }
+
+/* Terminal */
+.term { background: var(--term); color: var(--term-ink); border-radius: 12px; overflow: hidden; font: 400 0.84rem/1.6 var(--mono); border: 1px solid var(--term-line); min-width: 0; }
+.term-tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; padding: 0.55rem 0.6rem; border-bottom: 1px solid var(--term-line); background: var(--term-panel); align-items: center; }
+.term-tabs button {
+  font: inherit; font-size: 0.78rem; color: var(--term-muted); background: none; border: 0; border-radius: 6px; padding: 0.28rem 0.6rem; cursor: pointer;
+}
+.term-tabs button:hover { color: var(--term-ink); }
+.term-tabs button[aria-selected="true"] { background: var(--term-line); color: var(--term-ink); }
+.term-tabs .play { margin-left: auto; color: var(--term-accent); }
+.term-body { padding: 1rem 1.1rem 1.15rem; display: grid; gap: 0.7rem; min-height: 15.5rem; align-content: start; overflow-x: auto; }
+.req { color: var(--term-ink); }
+.req::before { content: "› "; color: var(--term-accent); }
+.step { display: grid; grid-template-columns: 1.1rem minmax(0, 1fr); gap: 0.1rem 0.4rem; }
+.step .tick { color: var(--term-accent); }
+.step .tick.bad { color: #F47067; }
+.step .tool { color: var(--term-ink); font-weight: 500; }
+.step .in { color: #AEB6C1; overflow-wrap: anywhere; }
+.step .out { grid-column: 2; color: var(--term-muted); overflow-wrap: anywhere; }
+.staged { border-top: 1px solid var(--term-line); padding-top: 0.75rem; display: grid; gap: 0.25rem; }
+.staged .cmd { font-weight: 500; overflow-wrap: anywhere; }
+.staged .cmd::after { content: ""; display: inline-block; width: 0.55em; height: 1.05em; background: var(--term-accent); margin-left: 0.25em; vertical-align: -0.16em; }
+.staged .badge { color: var(--term-accent); font-size: 0.78rem; }
+.none { color: #F47067; }
+.verdict { font-size: 0.78rem; color: var(--term-muted); }
+.term-note { font: 400 0.875rem/1.5 var(--sans); color: var(--muted); padding-top: 0.8rem; max-width: none; }
+.term-note .prov { display: block; font: 400 0.75rem/1.5 var(--mono); margin-top: 0.3rem; overflow-wrap: anywhere; }
+
+/* Sections */
+section.band { padding-block: clamp(3rem, 6vw, 5rem); border-top: 1px solid var(--line); }
+.band .wrap { display: grid; gap: clamp(1.75rem, 3vw, 2.5rem); }
+.head { display: grid; gap: 0.9rem; align-content: start; }
+.eyebrow { font: 500 0.75rem/1.2 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+
+.rules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(1.5rem, 3vw, 2.5rem); }
+.rules li { display: grid; gap: 0.5rem; align-content: start; border-top: 2px solid var(--ink); padding-top: 0.85rem; }
+.rules p { font-size: 1rem; color: var(--muted); }
+
+/* Protocol diagram */
+.flow { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.05fr) auto minmax(0, 1fr); gap: 0.6rem; align-items: stretch; }
+.node { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 1rem; display: grid; gap: 0.35rem; align-content: start; min-width: 0; }
+.node.core { background: var(--term); color: var(--term-ink); border-color: var(--term-line); }
+.node.core .small { color: var(--term-muted); }
+.node b { font: 600 1.0625rem/1.25 var(--serif); }
+.small { font-size: 0.875rem; line-height: 1.45; color: var(--muted); }
+.proto { font: 500 0.75rem/1.2 var(--mono); color: var(--accent); }
+.link { display: grid; place-items: center; font: 500 0.75rem/1.2 var(--mono); color: var(--muted); text-align: center; gap: 0.2rem; }
+.link::after { content: "⇄"; font-size: 1.15rem; }
+.down { grid-column: 3; display: grid; justify-items: center; color: var(--muted); }
+.flow-end { grid-column: 3; }
+
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.9375rem; }
+th, td { text-align: left; padding: 0.6rem 1rem 0.6rem 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 500 0.75rem/1.3 var(--mono); color: var(--muted); letter-spacing: 0.03em; }
+td.num, th.num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(1.5rem, 3vw, 3rem); }
+.points { display: grid; gap: 0.7rem; }
+.points li { display: grid; gap: 0.1rem; }
+.points b { font-weight: 600; }
+.points span { color: var(--muted); font-size: 0.9375rem; line-height: 1.5; }
+
+/* Safety gallery */
+.stats { display: flex; flex-wrap: wrap; gap: 0.5rem 2.25rem; }
+.stats div { display: grid; }
+.stats b { font: 600 1.85rem/1.15 var(--serif); font-variant-numeric: tabular-nums; }
+.stats span { font-size: 0.875rem; color: var(--muted); }
+.filters { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.filters button {
+  font: 500 0.8125rem/1 var(--mono); padding: 0.45rem 0.7rem; border-radius: 99px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); cursor: pointer;
+}
+.filters button[aria-pressed="true"] { color: var(--bg); background: var(--ink); border-color: var(--ink); }
+.gallery { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.gallery-row { display: grid; grid-template-columns: minmax(0, 1.15fr) 9.5rem minmax(0, 1fr); gap: 0.25rem 1.25rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--line); align-items: baseline; }
+.gallery-row:last-child { border-bottom: 0; }
+.gallery-row code { font-size: 0.8125rem; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
+.tier { font: 500 0.8125rem/1.3 var(--mono); white-space: nowrap; }
+.tier-read-only { color: var(--ro); } .tier-changes-files { color: var(--cf); } .tier-needs-review { color: var(--nr); } .tier-denied { color: var(--dn); }
+.action { font-size: 0.875rem; line-height: 1.45; color: var(--muted); min-width: 0; }
+.action b { color: var(--ink); font-weight: 500; }
+.action code { font-size: 0.8em; }
+
+/* Teacher-student loop */
+.loop { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.5rem; counter-reset: stage; }
+.loop li { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 0.85rem; display: grid; gap: 0.3rem; align-content: start; counter-increment: stage; }
+.loop li::before { content: counter(stage); font: 500 0.75rem/1 var(--mono); color: var(--accent); }
+.loop b { font: 600 1rem/1.25 var(--serif); }
+.loop-return { font: 400 0.875rem/1.5 var(--sans); color: var(--muted); }
+.ladder-status { font: 500 0.75rem/1.3 var(--mono); color: var(--muted); white-space: nowrap; }
+
+/* Charts */
+.chart { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 1rem 1.1rem; display: grid; gap: 0.6rem; min-width: 0; align-content: start; }
+.chart h3 { font-size: 1.0625rem; }
+.chart svg { display: block; width: 100%; height: auto; }
+.chart svg text { font: 400 12px var(--sans); fill: var(--muted); }
+.chart svg text.value { fill: var(--ink); font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.chart svg text.row { fill: var(--ink); }
+.legend { display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.8125rem; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; margin-right: 0.35rem; vertical-align: -1px; }
+.legend .a { background: var(--series-a); border-radius: 50%; }
+.legend .b { background: var(--series-b); border-radius: 2px; }
+.tip { position: fixed; z-index: 5; pointer-events: none; background: var(--term); color: var(--term-ink); font: 400 0.78rem/1.4 var(--mono); padding: 0.4rem 0.6rem; border-radius: 6px; max-width: 18rem; }
+
+/* Roadmap */
+.road { display: grid; }
+.road li { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr) auto; gap: 1rem; padding: 0.65rem 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+.road .ph { font: 500 0.8125rem/1.3 var(--mono); color: var(--muted); }
+.road .st { font: 500 0.75rem/1.3 var(--mono); color: var(--muted); }
+.road li.done .st { color: var(--ro); }
+.road li.next .st { color: var(--cf); }
+
+.ways { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(1.5rem, 3vw, 2.5rem); }
+.ways li { display: grid; gap: 0.45rem; align-content: start; }
+.ways p { font-size: 1rem; color: var(--muted); }
+pre.code { background: var(--term); color: var(--term-ink); padding: 1rem 1.1rem; border-radius: 10px; margin: 0; overflow-x: auto; font: 400 0.8125rem/1.65 var(--mono); }
+pre.code .c { color: var(--term-muted); }
+
+footer { border-top: 1px solid var(--line); padding-block: 2rem 3rem; color: var(--muted); font-size: 0.875rem; }
+footer .wrap { display: grid; gap: 0.5rem; }
+
+@media (max-width: 62rem) {
+  .hero .wrap { grid-template-columns: minmax(0, 1fr); }
+  .loop { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .loop li:last-child { grid-column: 1 / -1; }
+}
+@media (max-width: 46rem) {
+  .rules, .ways, .two { grid-template-columns: minmax(0, 1fr); }
+  .flow { grid-template-columns: minmax(0, 1fr); }
+  .down, .flow-end { grid-column: 1; }
+  .link::after { content: "⇅"; }
+  .gallery-row { grid-template-columns: minmax(0, 1fr); }
+  .top nav { margin-left: 0; width: 100%; }
+  .road li { grid-template-columns: 3.5rem minmax(0, 1fr); }
+  .road .st { grid-column: 2; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="tth home">
+      <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M56 29V16a10 10 0 0 0-10-10H16A10 10 0 0 0 6 16v32a10 10 0 0 0 10 10h40"/><path d="M20 20l12 12-12 12"/><path d="M42 44h14"/></svg>
+      tth
+    </a>
+    <nav aria-label="Sections">
+      <a href="#how">How it works</a>
+      <a href="#safety">Safety</a>
+      <a href="#gym">The gym</a>
+      <a href="#findings">Findings</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="https://github.com/eeshwarantharan/tth">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+<div class="hero">
+  <div class="wrap">
+    <div class="hero-copy">
+      <span class="status">Early research preview, not ready for daily use</span>
+      <h1>A small model that looks before it acts.</h1>
+      <p class="lede">tth turns plain English into a shell command. It checks your real files in a read-only sandbox, then puts the command on your prompt. You decide whether to run it.</p>
+      <p>It runs on your laptop, and it's trained in an open RL gym where only software verifiers hand out rewards.</p>
+      <div class="actions">
+        <a class="button primary" href="https://github.com/eeshwarantharan/tth">View on GitHub</a>
+        <a class="button" href="#findings">See what we've found</a>
+      </div>
+    </div>
+    <div>
+      <div class="term" id="replay">
+        <div class="term-tabs" role="tablist" aria-label="Recorded runs"></div>
+        <div class="term-body" aria-live="off"></div>
+      </div>
+      <p class="term-note" id="replay-note"></p>
+    </div>
+  </div>
+</div>
+
+<section class="band">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow">What it promises</p>
+      <h2>Three rules the model can't override.</h2>
+    </div>
+    <ul class="rules">
+      <li><h3>It never runs your command.</h3><p>The command goes into your shell's input line. You press Enter, or you don't.</p></li>
+      <li><h3>It checks your real files first.</h3><p>Probes run in a read-only, offline sandbox, with a 3 second limit and an 8 KB output cap. Secret paths are off limits.</p></li>
+      <li><h3>It asks before anything leaves your machine.</h3><p>You see the exact text that would be sent, with secrets removed. The default answer is no.</p></li>
+    </ul>
+  </div>
+</section>
+
+<section class="band" id="how">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow">How it works</p>
+      <h2>MCP is how it sees. A2A is how it asks for help.</h2>
+      <p>The same two contracts serve the product and the training gym. To change what the model can see, swap an MCP server. To change who teaches it or helps it, swap an A2A agent.</p>
+    </div>
+    <div class="flow">
+      <div class="node"><span class="proto">MCP</span><b>Tools</b><span class="small">Inspect the directory, read a file's header, dry-run a command. The sandbox and secret checks live here, so no client can skip them.</span></div>
+      <div class="link">tools</div>
+      <div class="node core"><span class="proto" style="color:var(--term-accent)">on your machine</span><b>Small model</b><span class="small">Picks one tool at a time. A grammar generated from each tool's schema keeps every call valid.</span></div>
+      <div class="link">help</div>
+      <div class="node"><span class="proto">A2A</span><b>Expert agent</b><span class="small">A bigger local model first, a hosted one only with your consent. Its answer gets tested locally like any other.</span></div>
+      <div class="down" aria-hidden="true">↓</div>
+      <div class="node flow-end"><span class="proto">deterministic</span><b>Safety layer, then your prompt</b><span class="small">An allowlist classifier and rewriter, independent of the model. The command lands on your prompt with a tier badge.</span></div>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Protocol</th><th>Today</th><th>Planned for Phase 3</th></tr></thead>
+        <tbody>
+          <tr><td><b>MCP</b></td><td>A working server other agents can use. tth's own agent calls its tools directly.</td><td>The only path to tools, for both the agent and the gym. CI fails on any bypass.</td></tr>
+          <tr><td><b>A2A</b></td><td>Basic escalation: one text message to a local expert that calls a hosted model.</td><td>The only path to help, using Agent Cards, task streaming, requests for more evidence, and typed answers.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="two">
+      <div class="head">
+        <h3>How MCP can make a small model better</h3>
+        <ul class="points">
+          <li><b>Schema to grammar</b><span>Every tool's schema becomes a decoding grammar, so malformed calls can't happen.</span></li>
+          <li><b>Verify, then commit</b><span><code>stage</code> only becomes available after a passing check. This targets the looping we measured.</span></li>
+          <li><b>Compiler tools</b><span>The model fills in <code>csv_aggregate(file, op, column, where)</code>, and the tool writes the <code>awk</code>.</span></li>
+          <li><b>Domain packs</b><span>New capability arrives as a server with its own gym tasks, with no change to the core.</span></li>
+        </ul>
+      </div>
+      <div class="head">
+        <h3>How A2A can make a small model better</h3>
+        <ul class="points">
+          <li><b>Escalation teaches</b><span>With your opt-in, a verified answer becomes a local lesson, so the same request needn't escalate twice.</span></li>
+          <li><b>Same loop as training</b><span>In the gym, a teacher takes over at the student's first failure through the same handoff.</span></li>
+          <li><b>Expert tiers</b><span>Agent Cards route to a bigger local model before anything hosted.</span></li>
+          <li><b>Answers you can check</b><span>Typed results go through the same classifier and dry-run as the model's own commands.</span></li>
+        </ul>
+      </div>
+    </div>
+    <p class="small">These are plans, and each one has to prove itself on the improvement ladder below or it gets removed.</p>
+  </div>
+</section>
+
+<section class="band" id="safety">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow">Safety</p>
+      <h2>Try to fool it. We did.</h2>
+      <p>Every row below is real output from the classifier in this repo. Our first audit found commands like <code>cat &lt;&lt;EOF | sh</code> marked read-only. After we fixed those, a second round of attacks found more, including brace expansion and a zsh comment trick. This layer still needs outside review.</p>
+    </div>
+    <div class="stats" id="safety-stats"></div>
+    <div class="filters" role="group" aria-label="Filter by safety tier" id="filters"></div>
+    <div class="gallery" id="gallery"></div>
+    <p>Found a command that gets the wrong tier? <a href="https://github.com/eeshwarantharan/tth/tree/main/tests/safety/cases">Add it to the red team</a>. It's the best first contribution there is.</p>
+  </div>
+</section>
+
+<section class="band" id="gym">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow">The gym</p>
+      <h2>Teacher, student, and a verifier neither can argue with.</h2>
+      <p>Most of this project is an RL gym. Each environment hides its state behind tools, so the student has to look. Tool schemas are randomized, and errors are injected. Software assigns the reward: real execution for shell, python-chess and Stockfish for chess. A model never judges a model.</p>
+    </div>
+    <ol class="loop">
+      <li><b>Teachers demonstrate</b><span class="small">A scripted oracle and an LLM teacher solve tasks in the gym.</span></li>
+      <li><b>Verifiers filter</b><span class="small">Only correct episodes with no penalties survive.</span></li>
+      <li><b>Student imitates</b><span class="small">Supervised fine-tuning on those episodes, then a quick smoke test before more GPU time.</span></li>
+      <li><b>Teacher corrects</b><span class="small">The student practises. At its first failure the teacher takes over from that state, and the fix becomes new data (DAgger).</span></li>
+      <li><b>Student explores</b><span class="small">RL with verifier rewards, then a quantization matrix on the final model.</span></li>
+    </ol>
+    <div class="two">
+      <div class="head">
+        <h3>The improvement ladder</h3>
+        <p>Each change is scored against the step below it, on the same held-out tasks, on the final quantized build on an 8 GB laptop. A change that doesn't win gets removed.</p>
+        <p class="small">If the best student can't beat a stock model with a grammar after at least 5,000 verified episodes, we stop training and ship the stock model. The safety layer and the gym stay useful either way.</p>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Step</th><th>Change</th><th>Result</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">L0</td><td>Stock model, one per candidate</td><td class="ladder-status">not run</td></tr>
+            <tr><td class="mono">L1</td><td>Grammar from MCP schemas</td><td class="ladder-status">not run</td></tr>
+            <tr><td class="mono">L2</td><td>Verify, then commit, by construction</td><td class="ladder-status">not run</td></tr>
+            <tr><td class="mono">L3</td><td>Compact prompt, structured observations</td><td class="ladder-status">not run</td></tr>
+            <tr><td class="mono">L4</td><td>Compiler tools</td><td class="ladder-status">not run</td></tr>
+            <tr><td class="mono">L5</td><td>Retrieved lessons</td><td class="ladder-status">not run</td></tr>
+            <tr><td class="mono">L6</td><td>Fine-tuning from demonstrations</td><td class="ladder-status">not run</td></tr>
+            <tr><td class="mono">L7</td><td>DAgger rounds</td><td class="ladder-status">not run</td></tr>
+            <tr><td class="mono">L8</td><td>RL with verifier rewards</td><td class="ladder-status">not run</td></tr>
+            <tr><td class="mono">Q</td><td>Quantization matrix</td><td class="ladder-status">not run</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="findings">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow">Findings</p>
+      <h2>What we got wrong, and what it taught us.</h2>
+      <p>Our first training run scored 0 out of 100. It looked like the model had forgotten everything. It hadn't. Training had taught it to end its turn before it learned the tag that opens a tool call, so it replied with nothing.</p>
+    </div>
+    <div class="two">
+      <figure class="chart" style="margin:0">
+        <h3>The model never learned the opening tag</h3>
+        <div class="legend"><span><i class="a"></i>Opening tag, <code>&lt;tool_call&gt;</code></span><span><i class="b"></i>End of turn, <code>&lt;|im_end|&gt;</code></span></div>
+        <div id="chart-tags"></div>
+        <figcaption class="small">Probability given to the correct token, on the model's own training data. Log scale. <a href="https://github.com/eeshwarantharan/tth/blob/main/evals/diagnostics/results/token_nll.json">Data</a></figcaption>
+      </figure>
+      <figure class="chart" style="margin:0">
+        <h3>Forcing the tag brought those weights back</h3>
+        <div id="chart-forced"></div>
+        <figcaption class="small">Correct out of 20 held-out shell tasks, with 95% intervals. All overlap, so no arm is shown to beat another. "Forced" starts each reply with the tag, with no retraining. <a href="https://github.com/eeshwarantharan/tth/blob/main/evals/diagnostics/results/forced_wrapper.jsonl">Data</a></figcaption>
+      </figure>
+    </div>
+    <div class="two">
+      <ul class="points">
+        <li><b>Training hasn't beaten the untrained model yet.</b><span id="finding-training"></span></li>
+        <li><b>It did change behaviour.</b><span id="finding-behaviour"></span></li>
+        <li><b>Chess shows no visible effect so far.</b><span id="finding-chess"></span></li>
+      </ul>
+      <ul class="points">
+        <li><b>The recorded baseline can't be trusted.</b><span>On these same 20 tasks the recorded base scored 0/20, and this run scored 7/20. The two differ in code version, backend and tools, so every number gets rerun.</span></li>
+        <li><b>Inference is the slow part.</b><span>Episodes took 4.7 to 14.6 seconds with the model already loaded. So we deferred a Rust rewrite, which wouldn't speed that up. Fewer turns and shorter prompts will.</span></li>
+        <li><b>Only 90 examples, for 12 training steps.</b><span>That's far too little to judge fine-tuning. It's why the ladder exists.</span></li>
+      </ul>
+    </div>
+    <div class="tablewrap">
+      <table id="forced-table"></table>
+    </div>
+    <p>Read the <a href="https://github.com/eeshwarantharan/tth/blob/main/docs/analysis/2026-11-audit.md">full audit</a>, including its limits. Small samples are labeled as small, and failures are reported as failures.</p>
+  </div>
+</section>
+
+<section class="band" id="roadmap">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow">Roadmap</p>
+      <h2>Where it stands.</h2>
+    </div>
+    <ul class="road" id="road"></ul>
+    <p><a href="https://github.com/eeshwarantharan/tth/blob/main/docs/ROADMAP.md">Read the full roadmap</a></p>
+  </div>
+</section>
+
+<section class="band" id="contribute">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow">Contribute</p>
+      <h2>Good first problems are real problems here.</h2>
+    </div>
+    <ul class="ways">
+      <li><h3>Break the classifier</h3><p>Find a command that gets a wrong tier, and add it to the red team with the fix.</p></li>
+      <li><h3>Add a gym task family</h3><p>Write a new kind of shell task with a check based on real execution.</p></li>
+      <li><h3>Add a shell</h3><p>Fish, Nushell and PowerShell integrations are all open.</p></li>
+    </ul>
+    <div class="two">
+      <div class="head">
+        <h3>Try it</h3>
+        <p>On Apple Silicon, with the untrained model, so expect mistakes. Always read a command before you run it.</p>
+        <p><a href="https://github.com/eeshwarantharan/tth#quickstart">Full quickstart</a> · <a href="https://github.com/eeshwarantharan/tth/blob/main/CONTRIBUTING.md">Contributing guide</a> · <a href="https://github.com/eeshwarantharan/tth/blob/main/SECURITY.md">Security policy</a></p>
+      </div>
+      <pre class="code"><span class="c"># get the code and check your setup</span>
+git clone https://github.com/eeshwarantharan/tth.git
+cd tth &amp;&amp; uv sync --extra mlx
+uv run tth setup
+
+<span class="c"># run the safety suite</span>
+uv run pytest tests/safety</pre>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>tth is Apache-2.0. The base model, Qwen2.5-Coder-1.5B-Instruct, is Apache-2.0 from the Qwen team.</p>
+    <p>Every number and trace on this page is generated from files in the repository, and a test fails if they drift. <a href="https://github.com/eeshwarantharan/tth/blob/main/scripts/build_site_data.py">See how</a>.</p>
+  </div>
+</footer>
+
+<div class="tip" id="tip" hidden></div>
+<script src="data.js"></script>
+<script src="site.js"></script>
+</body>
+</html>

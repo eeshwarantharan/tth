@@ -128,33 +128,33 @@ The `v0.1` codebase implements an end-to-end loop linking the local shell to the
 During testing on macOS Apple Silicon M2, six critical architectural defects were identified and resolved in the v0.1 engine:
 
 #### 1. MLX KV-Cache Slice Truncation Bug
-* **Location:** [`src/tth/runtime/mlx_backend.py`](file:///Users/tharaneeshwaran/Documents/TTH/src/tth/runtime/mlx_backend.py)
+* **Location:** [`src/tth/runtime/mlx_backend.py`](../../src/tth/runtime/mlx_backend.py)
 * **Root Cause:** When updating the persistent KV cache across multi-turn tool interactions, the backend executed `self._cache_tokens = prompt + toks[:-1]`. On the subsequent turn, the token slice mismatched by 1 token, triggering total cache invalidation and re-evaluating thousands of prompt tokens from scratch.
 * **Resolution:** Fixed to `self._cache_tokens = prompt + toks`.
 * **Impact:** Reduced multi-turn generation latency by **52%** and prevented cache thrashing across turns 2 through 6.
 
 #### 2. Greedy XML Tool Call Serialization
-* **Location:** [`src/tth/runtime/toolcalls.py`](file:///Users/tharaneeshwaran/Documents/TTH/src/tth/runtime/toolcalls.py)
+* **Location:** [`src/tth/runtime/toolcalls.py`](../../src/tth/runtime/toolcalls.py)
 * **Root Cause:** Small parameter models (1.5B) under zero-temperature greedy decoding emitted XML `<function name="...">...<arguments>...</function>` instead of markdown fences. The parser dropped them into raw text, exhausting turn budgets.
 * **Resolution:** Implemented `_xml_calls` regex extraction parser supporting `<function>` and `<arguments>` with JSON and loose key-value arguments parsing.
 
 #### 3. Modifying Command Rejection in `dry_run`
-* **Location:** [`src/tth/tools/shell_tools.py`](file:///Users/tharaneeshwaran/Documents/TTH/src/tth/tools/shell_tools.py) & [`src/tth/agent/product.py`](file:///Users/tharaneeshwaran/Documents/TTH/src/tth/agent/product.py)
+* **Location:** [`src/tth/tools/shell_tools.py`](../../src/tth/tools/shell_tools.py) & [`src/tth/agent/product.py`](../../src/tth/agent/product.py)
 * **Root Cause:** Modifying operations (e.g., `git revert <hash>`, `mkdir -p foo`) failed inside the read-only sandbox with exit code 128/1, causing the agent to conclude the command was invalid.
 * **Resolution:** Updated `t_dry_run` to check the AST classifier tier (`CHANGES_FILES`), explaining that mutating operations cannot be executed in the read-only sandbox, while `ProductEnv` tracks `last_candidate` to stage verified modifying commands cleanly.
 
 #### 4. Argmax Loop Degeneration & Budget Depletion
-* **Location:** [`src/tth/agent/product.py`](file:///Users/tharaneeshwaran/Documents/TTH/src/tth/agent/product.py)
+* **Location:** [`src/tth/agent/product.py`](../../src/tth/agent/product.py)
 * **Root Cause:** In greedy mode ($T=0$), repeated failed commands triggered identical failing tool calls across turns 2–6, wasting ~60 seconds of local inference before aborting.
 * **Resolution:** Added instant cycle detection in `ProductEnv.step()`. Repeated failing tool calls immediately trigger auto-staging of verified candidates or clean escalation.
 
 #### 5. Hallucinated Variable Staging Shield
-* **Location:** [`src/tth/agent/product.py`](file:///Users/tharaneeshwaran/Documents/TTH/src/tth/agent/product.py)
+* **Location:** [`src/tth/agent/product.py`](../../src/tth/agent/product.py)
 * **Root Cause:** When counting lines or matches, the model occasionally called `stage(command="$lines")` or `stage(command="$count")`.
 * **Resolution:** Added an AST validation guard in `stage` falling back to `last_verified`.
 
 #### 6. Non-Interactive CI / TTY Blocking
-* **Location:** [`src/tth/cli/main.py`](file:///Users/tharaneeshwaran/Documents/TTH/src/tth/cli/main.py)
+* **Location:** [`src/tth/cli/main.py`](../../src/tth/cli/main.py)
 * **Root Cause:** Automated test runs and headless evaluation harnesses hung indefinitely when A2A escalation prompted for user consent (`/dev/tty`).
 * **Resolution:** Added `TTH_AUTO_ESCALATE=1` and `TTH_YES=1` environment variable overrides to allow non-interactive CI/benchmark execution while strictly maintaining interactive consent defaults for human users.
 
