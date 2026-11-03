@@ -18,6 +18,7 @@ from typing import Any
 
 from mcp import StdioServerParameters
 from mcp.client.client import Client
+from mcp.server.lowlevel import Server
 from mcp.server.mcpserver import MCPServer
 
 from tth.core.types import ToolDef, ToolResult
@@ -39,7 +40,7 @@ def _clean_schema(schema: Any) -> Any:
 
 
 class ToolSession:
-    def __init__(self, target: MCPServer | StdioServerParameters) -> None:
+    def __init__(self, target: MCPServer | Server | StdioServerParameters) -> None:
         # Bad model arguments are normal here, and they go back to the model. They shouldn't reach the user's terminal.
         logging.getLogger("mcp").setLevel(logging.CRITICAL)
         self._target = target
@@ -84,6 +85,12 @@ class ToolSession:
 
     def tools(self, only: set[str] | None = None) -> list[ToolDef]:
         return [d for name, d in self._defs.items() if only is None or name in only]
+
+    def call_raw(self, name: str, args: dict[str, Any]) -> tuple[str, bool, dict[str, Any]]:
+        """The result as sent: its text, whether it's an error, and its metadata. Any name may be sent."""
+        result = self._run(self._require_client().call_tool(name, args))
+        text = "\n".join(c.text for c in result.content if getattr(c, "type", "") == "text")
+        return text, bool(result.is_error), dict(result.meta or {})
 
     def call(self, name: str, args: dict[str, Any]) -> ToolResult:
         if name not in self._defs:

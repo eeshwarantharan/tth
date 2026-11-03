@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import random
-import secrets
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -184,7 +183,7 @@ class ChessEnv:
             r.shuffle(tools)
         stale_at = r.randint(1, 3) if rand and r.random() < self.cfg.p_stale_episode else None
         st = EpisodeState(names=names, args=args, board_fmt=board_fmt, notation=notation,
-                          token=secrets.token_hex(3), stale_at=stale_at)  # fmt: skip
+                          token=f"{self.rng.getrandbits(24):06x}", stale_at=stale_at)  # fmt: skip
         return tools, st
 
     # ---- rendering ------------------------------------------------------------
@@ -262,7 +261,7 @@ class ChessEnv:
             if st.stale_at is not None and n >= st.stale_at and not st.stale_pending and canon != "view":
                 st.stale_at = None
                 st.stale_pending = True
-                st.token = secrets.token_hex(3)
+                st.token = f"{self.rng.getrandbits(24):06x}"
                 return self._err(CallRecord(canon, False, "stale"),
                                  "STALE_STATE: the position was refreshed and your state token is no longer valid. "
                                  "View the board again before continuing.")  # fmt: skip

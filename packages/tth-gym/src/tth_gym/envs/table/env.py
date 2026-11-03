@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 import random
-import secrets
 import statistics
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -196,7 +195,9 @@ class TableEnv:
         if r.random() < 0.5:
             tools.append(r.choice(DISTRACTORS))
         r.shuffle(tools)
-        self.st = TState(names, args, fmt, secrets.token_hex(3), r.randint(1, 3) if r.random() < self.p_stale else None)
+        self.st = TState(
+            names, args, fmt, f"{self.rng.getrandbits(24):06x}", r.randint(1, 3) if r.random() < self.p_stale else None
+        )
         self.canon_of = {v: k for k, v in names.items()}
         return EpisodeStart(SYSTEM, self.task.question, tools,
                             meta={"task_id": self.task.id, "kind": self.task.kind, "names": names})  # fmt: skip
@@ -223,7 +224,7 @@ class TableEnv:
             args[ck] = v
         if canon not in ("submit", "impossible"):
             if st.stale_at is not None and len(st.records) >= st.stale_at and canon != "view":
-                st.stale_at, st.stale_pending, st.token = None, True, secrets.token_hex(3)
+                st.stale_at, st.stale_pending, st.token = None, True, f"{self.rng.getrandbits(24):06x}"
                 return self._err(Rec(canon, False, "stale"), "STALE_STATE: the table was refreshed and your state token "
                                  "is no longer valid. View the table again before continuing.")  # fmt: skip
             roll = self.rng.random()
