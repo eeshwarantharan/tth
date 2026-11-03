@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import chess
+
 from tth.agent.loop import run_episode
 from tth.core.types import ModelTurn, ToolCall
 from tth_gym.envs.chess.env import ChessEnv, EnvConfig, reward

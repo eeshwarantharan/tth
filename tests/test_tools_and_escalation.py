@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import pytest
+
 from tth.a2a.payload import build_payload
 from tth.a2a.redact import redact
 from tth.mcp.toolbox import ShellToolbox

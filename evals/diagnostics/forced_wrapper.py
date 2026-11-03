@@ -18,6 +18,7 @@ import time
 from typing import Any
 
 import mlx.core as mx
+
 import tth.inference.mlx as mb
 from tth.agent.loop import run_episode
 from tth.core.types import ModelTurn, ToolCall, ToolDef

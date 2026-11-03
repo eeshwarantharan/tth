@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+
 from tth.safety import rewriter
 from tth.safety.classifier import classify
 

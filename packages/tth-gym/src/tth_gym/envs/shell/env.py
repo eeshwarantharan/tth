@@ -20,7 +20,6 @@ from tth.core.types import EpisodeStart, StepOutcome, ToolCall
 from tth.mcp.toolbox import ShellToolbox
 from tth.safety.rewriter import rewrite, selection_part
 from tth.sandbox.runner import run_shell
-
 from tth_gym.envs.shell.fixtures import build
 from tth_gym.envs.shell.tasks import ShellTask
 

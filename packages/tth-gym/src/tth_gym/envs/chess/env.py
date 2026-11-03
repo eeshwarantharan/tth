@@ -14,8 +14,8 @@ from typing import Any
 
 import chess
 import chess.engine
-from tth.core.types import EpisodeStart, StepOutcome, ToolCall, ToolDef
 
+from tth.core.types import EpisodeStart, StepOutcome, ToolCall, ToolDef
 from tth_gym.envs.chess.tasks import ChessTask
 
 # Canonical tool -> pool of names. Canonical arg -> pool of names.

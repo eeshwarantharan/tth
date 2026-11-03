@@ -29,6 +29,9 @@ ignore = ["S101", "S603", "S607", "S311", "E501"]  # line length is left to the 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["tth", "tth_gym", "evals"]
+
 [tool.pyright]
 include = ["packages", "evals", "tests"]
 pythonVersion = "3.11"

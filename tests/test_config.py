@@ -6,6 +6,7 @@ import ast
 from pathlib import Path
 
 import pytest
+
 from tth.core.config import Config, ConfigError, find_model, load_config, load_user_env, model_candidates
 
 ROOT = Path(__file__).resolve().parents[1]

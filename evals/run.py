@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+
 from tth.agent.loop import run_episode
 from tth.trace.schema import TraceLogger
 
@@ -26,6 +27,7 @@ def _policy(args: argparse.Namespace) -> Any:
     if args.policy == "hf":  # GPU: batched greedy decoding over a whole suite (Kaggle/Colab)
         import torch  # pyright: ignore[reportMissingImports]
         from transformers import AutoModelForCausalLM, AutoTokenizer
+
         from tth_gym.train.hf_policy import HFBatchPolicy
 
         base = os.environ.get("TTH_BASE", "Qwen/Qwen2.5-Coder-1.5B-Instruct")

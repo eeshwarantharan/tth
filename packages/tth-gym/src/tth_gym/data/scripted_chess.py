@@ -19,9 +19,9 @@ from pathlib import Path
 from typing import Any
 
 import chess
+
 from tth.agent.loop import run_episode
 from tth.core.types import ModelTurn, ToolCall, ToolDef
-
 from tth_gym.envs.chess.env import ChessEnv, StockfishExpert, episode_summary
 from tth_gym.envs.chess.tasks import ChessTask, generate
 

@@ -6,6 +6,7 @@ from __future__ import annotations
 from typing import Any
 
 import torch  # pyright: ignore[reportMissingImports]  (Colab-only dependency)
+
 from tth.core.types import ModelTurn, ToolDef
 from tth.inference.toolcalls import parse_qwen
 

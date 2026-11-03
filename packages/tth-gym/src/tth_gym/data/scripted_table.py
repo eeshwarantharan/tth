@@ -13,7 +13,6 @@ from typing import Any
 
 from tth.agent.loop import run_episode
 from tth.core.types import ModelTurn, ToolCall, ToolDef
-
 from tth_gym.envs.table.env import TableEnv, episode_summary, generate, save
 
 TEACHER = "scripted-oracle (table)"
