@@ -22,8 +22,8 @@ from tth.mcp.client import ToolSession, connect
 from tth.safety.rewriter import rewrite, selection_part
 from tth.safety.staging import refuse
 
-PROBES = {"inspect_context", "probe", "dry_run"}
-OBSERVATIONS = {"inspect_context", "probe"}
+PROBES = {"inspect_context", "probe", "dry_run", "aggregate"}
+OBSERVATIONS = {"inspect_context", "probe", "aggregate"}
 
 
 _FENCED = re.compile(r"```(?:\w+)?\n(.*?)```", re.S)

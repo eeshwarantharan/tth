@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from tth.core.types import ToolDef, ToolResult
+from tth.packs.data import Query, compile_csv, compile_json
 from tth.safety.classifier import classify
 from tth.safety.rewriter import selection_part
 from tth.safety.secrets import is_secret_path
@@ -189,6 +190,36 @@ class ShellToolbox:
             data["error"] = r.stderr.strip()[:600]
             ok = False
         return ToolResult(data, ok=ok)
+
+    # ---- compiler tools -------------------------------------------------------------
+    def aggregate(self, q: Query) -> ToolResult:
+        """Read the file's real fields, compile the command, and test it in the sandbox."""
+        if is_secret_path(q.path, self.cwd):
+            return ToolResult({"error": f"refused: {q.path} is a secret path and is never read"}, ok=False)
+        suffix = Path(q.path).suffix.lower()
+        if suffix == ".csv":
+            head = self._run(["head", "-n", "1", "--", q.path])
+            if not head.ok:
+                return ToolResult({"error": (head.stderr or "couldn't read the file").strip()[:300]}, ok=False)
+            command = compile_csv(q, head.stdout)
+        elif suffix in (".json", ".jsonl"):
+            lines = suffix == ".jsonl"
+            program = "input | keys_unsorted" if lines else '(if type == "array" then .[0] else . end) | keys_unsorted'
+            keys = self._run(
+                ["jq", "-c", "-n" if lines else "-c", program, "--", q.path]
+                if lines
+                else ["jq", "-c", program, "--", q.path]
+            )
+            if not keys.ok:
+                return ToolResult({"error": (keys.stderr or "couldn't read the file").strip()[:300]}, ok=False)
+            command = compile_json(q, json.loads(keys.stdout), lines)
+        else:
+            return ToolResult({"error": "aggregate works on .csv, .json and .jsonl files"}, ok=False)
+        r = run_shell(command, self.cwd, timeout=self.timeout, cap=self.cap, allow_disposable=self.allow_disposable)
+        result = [line for line in r.stdout.splitlines() if line.strip()][:SAMPLE_LINES]
+        if not r.ok:
+            return ToolResult({"command": command, "error": (r.stderr or "the command failed").strip()[:300]}, ok=False)
+        return ToolResult({"command": command, "result": result, "next": "call stage with this command"})
 
     # ---- decisions ----------------------------------------------------------------
     def t_stage(self, command: str, explanation: str = "") -> ToolResult:

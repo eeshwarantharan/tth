@@ -18,11 +18,16 @@ from pydantic import Field
 
 from tth.core.types import ToolResult
 from tth.mcp.toolbox import TOOL_DEFS, ShellToolbox
+from tth.packs.data import CompileError, Query
 from tth.safety.rewriter import rewrite
 from tth.sandbox.runner import SandboxUnavailable
 
 READ_ONLY = ToolAnnotations(read_only_hint=True, destructive_hint=False, idempotent_hint=True, open_world_hint=False)
 _DESCRIPTIONS = {t.name: t.description for t in TOOL_DEFS}
+AGGREGATE_DESCRIPTION = (
+    "Answer a total, average, count, min, max or filtered list over a CSV, JSON or JSONL file. Say what you want, and "
+    "this writes and tests the command. It returns the command and its result. Then call stage with that command."
+)
 _PROBE_KINDS = Literal["head", "csv_header", "json_keys", "help", "stat", "tree"]
 
 
@@ -58,6 +63,24 @@ def build_server(cwd: Path, shell: str | None = None, allow_disposable: bool = F
     @server.tool(description=_DESCRIPTIONS["dry_run"], annotations=READ_ONLY)
     def dry_run(command: str) -> dict[str, Any]:
         return respond("dry_run", {"command": command})
+
+    @server.tool(description=AGGREGATE_DESCRIPTION, annotations=READ_ONLY)
+    def aggregate(
+        file: Annotated[str, Field(description="A .csv, .json or .jsonl file")],
+        op: Literal["sum", "avg", "count", "min", "max", "list"],
+        column: Annotated[str, Field(description="Column to use, or arithmetic such as 'units * price'")] = "",
+        where_column: Annotated[str, Field(description="Only use rows where this column matches")] = "",
+        where_op: Literal["eq", "ne", "gt", "ge", "lt", "le"] = "eq",
+        where_value: str = "",
+    ) -> dict[str, Any]:
+        query = Query(file, op, column, where_column, where_op, where_value)
+        try:
+            r = box.aggregate(query)
+        except CompileError as e:
+            return {"ok": False, "error": str(e)}
+        except SandboxUnavailable as e:
+            return {"ok": False, "error": f"the sandbox isn't available: {e}"}
+        return {"ok": r.ok, **r.data}
 
     @server.tool(
         description="Classify a command's safety tier and show tth's safe rewrite. Never executes it.",

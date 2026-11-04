@@ -18,6 +18,7 @@ from tth.mcp.toolbox import TOOL_DEFS
 
 ROOT = Path(__file__).resolve().parents[1]
 PROBES = {"inspect_context", "probe", "dry_run"}
+SERVED = PROBES | {"aggregate", "classify"}
 
 
 @pytest.fixture(params=["memory", "stdio"])
@@ -30,7 +31,7 @@ def session(request: pytest.FixtureRequest, tmp_path: Path):
 
 
 def test_tools_are_discovered_over_the_protocol(session: ToolSession) -> None:
-    assert {t.name for t in session.tools()} == PROBES | {"classify"}
+    assert {t.name for t in session.tools()} == SERVED
 
 
 def test_every_tool_is_declared_read_only(session: ToolSession) -> None:
@@ -106,7 +107,7 @@ def test_the_model_sees_probes_and_decisions_only(tmp_path: Path) -> None:
     env = ProductEnv("x", tmp_path, "zsh")
     start = env.reset()
     env.close()
-    assert {t.name for t in start.tools} == PROBES | DECISION_NAMES
+    assert {t.name for t in start.tools} == PROBES | {"aggregate"} | DECISION_NAMES
 
 
 def test_a_whole_episode_runs_over_mcp(tmp_path: Path) -> None:

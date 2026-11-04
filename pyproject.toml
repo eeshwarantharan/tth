@@ -62,7 +62,7 @@ layers = [
   "tth.a2a | tth.inference | tth.mcp",
   "tth.sandbox",
   "tth.safety",
-  "tth.trace | tth.core",
+  "tth.packs | tth.trace | tth.core",
 ]
 
 [[tool.importlinter.contracts]]

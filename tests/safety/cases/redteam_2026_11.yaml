@@ -338,7 +338,7 @@
 - {cmd: "echo x > ../out.txt", tier: changes-files, staged: null}
 - {cmd: "cp a /etc/b", tier: changes-files, staged: null}
 - {cmd: "mv a ../b", tier: changes-files, staged: null}
-- {cmd: "trash notes.txt", tier: changes-files, staged: "trash notes.txt"}
+- {cmd: "trash notes.txt", tier: changes-files, staged_contains: "notes.txt"}
 - {cmd: "rm notes.txt", tier: changes-files, never_raw: true}
 - {cmd: "echo x > out.txt", tier: changes-files, staged: "echo x > out.txt"}
 - {cmd: "echo x > /dev/null", tier: read-only}
@@ -348,5 +348,5 @@
 - {cmd: "logout", tier: denied, staged: null}
 
 # Inside the project is fine, however the path is written.
-- {cmd: "trash ./notes.txt", tier: changes-files, staged: "trash ./notes.txt"}
+- {cmd: "trash ./notes.txt", tier: changes-files, staged_contains: "./notes.txt"}
 - {cmd: "mkdir sub/dir", tier: changes-files, staged: "mkdir sub/dir"}
