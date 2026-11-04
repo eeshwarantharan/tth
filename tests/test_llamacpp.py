@@ -97,6 +97,12 @@ def test_without_a_grammar_tool_choice_is_not_sent() -> None:
     assert "tool_choice" not in client.kwargs
 
 
+def test_the_shipped_policy_has_no_grammar() -> None:
+    """The bake-off ran without one, and it was ten times slower. The product has to match what was measured."""
+    assert llamacpp.llama_policy().tool_choice is None
+    assert llamacpp.llama_policy(grammar=True).tool_choice == "required"
+
+
 def test_raw_output_is_kept_for_traces() -> None:
     call = SimpleNamespace(id="1", function=SimpleNamespace(name="stage", arguments='{"command": "ls"}'))
     p, _ = _policy(_fake_reply(calls=[call]))
@@ -117,7 +123,7 @@ def test_a_tool_call_written_as_text_is_still_understood() -> None:
 @needs_model
 def test_a_real_model_with_a_grammar_always_calls_a_real_tool(tmp_path: Path) -> None:
     llamacpp.ensure_server(GGUF, tmp_path / "log")
-    policy = llamacpp.llama_policy()
+    policy = llamacpp.llama_policy(grammar=True)
     for request in ("count python files", "hello", "what is the meaning of life?"):
         turn = policy.chat([{"role": "user", "content": request}], TOOLS)
         assert len(turn.tool_calls) >= 1, turn.raw

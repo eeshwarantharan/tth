@@ -1,8 +1,8 @@
 """Run a GGUF model through a warm local llama-server.
 
 The server stays loaded between requests, so `t` doesn't reload the model every time, and it unloads the model after
-10 idle minutes. The tool schemas from MCP become llama.cpp's decoding grammar through `tool_choice: required`, so
-every reply is a valid call to a real tool.
+10 idle minutes. The tool schemas from MCP can become llama.cpp's decoding grammar through `tool_choice: required`.
+That's off by default: we measured the same accuracy at ten times the time (docs/ROADMAP.md, rung L1).
 
 The process started here is a model server. It never receives or runs the user's command.
 """
@@ -21,6 +21,8 @@ from tth.inference.openai_compat import OpenAIPolicy
 
 DEFAULT_PORT = 8791
 CONTEXT_TOKENS = 8192
+UBATCH_TOKENS = 512
+CHECKPOINTS = 8
 IDLE_SECONDS = 600
 START_TIMEOUT = 90.0
 
@@ -29,14 +31,19 @@ class ServerUnavailable(Exception):
     """llama-server is missing or wouldn't start. The message says what to do."""
 
 
-def server_args(model: Path, port: int) -> list[str]:
+def server_args(
+    model: Path, port: int, ctx: int = CONTEXT_TOKENS, ubatch: int = UBATCH_TOKENS, checkpoints: int = CHECKPOINTS
+) -> list[str]:
     return [
         "llama-server",
         "--model", str(model),
         "--host", "127.0.0.1",  # never reachable from another machine
         "--port", str(port),
-        "--ctx-size", str(CONTEXT_TOKENS),
+        "--ctx-size", str(ctx),
+        "--ubatch-size", str(ubatch),
+        "--ctx-checkpoints", str(checkpoints),
         "--parallel", "1",
+        "--cache-ram", "0",  # one user, one slot: the default keeps up to 8 GB of old prompts in memory
         "--jinja",
         "--no-webui",
         "--sleep-idle-seconds", str(IDLE_SECONDS),
@@ -80,7 +87,7 @@ def ensure_server(model: Path, log: Path, port: int = DEFAULT_PORT) -> None:
     raise ServerUnavailable(f"llama-server didn't become ready within {START_TIMEOUT:.0f}s. See {log}")
 
 
-def llama_policy(port: int = DEFAULT_PORT, grammar: bool = True) -> OpenAIPolicy:
+def llama_policy(port: int = DEFAULT_PORT, grammar: bool = False) -> OpenAIPolicy:
     return OpenAIPolicy(
         model="local", base_url=f"http://127.0.0.1:{port}/v1", api_key="local", temperature=0.0, max_tokens=512,
         thinking=False, limiter=None, tool_choice="required" if grammar else None, attempts=1,

@@ -87,7 +87,7 @@ The agent reaches experts only through `tth/agent/escalation.py`, which is where
 
 | Backend | Runs | Grammar |
 |---|---|---|
-| `llamacpp` | A GGUF through a warm local `llama-server`, which stays loaded between requests and only listens on this machine | Available: the MCP tool schemas become the decoding grammar |
+| `llamacpp` | A GGUF through a warm local `llama-server`, which stays loaded between requests and only listens on this machine | Available: the MCP tool schemas can become the decoding grammar, off by default because it was ten times slower for the same accuracy |
 | `mlx` | MLX weights in the same process | No |
 | `openai` | Any OpenAI-compatible server you run | Depends on the server |
 
