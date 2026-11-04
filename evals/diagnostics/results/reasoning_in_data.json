@@ -1,0 +1,26 @@
+{
+ "shell_teacher": {
+  "rows": 91,
+  "assistant_turns": 376,
+  "turns_with_text": 4,
+  "mean_chars_per_turn": 1.0
+ },
+ "chess_teacher": {
+  "rows": 87,
+  "assistant_turns": 286,
+  "turns_with_text": 49,
+  "mean_chars_per_turn": 32.8
+ },
+ "chess_scripted": {
+  "rows": 651,
+  "assistant_turns": 2388,
+  "turns_with_text": 0,
+  "mean_chars_per_turn": 0.0
+ },
+ "table_scripted": {
+  "rows": 738,
+  "assistant_turns": 2524,
+  "turns_with_text": 0,
+  "mean_chars_per_turn": 0.0
+ }
+}
