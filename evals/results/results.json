@@ -433,6 +433,110 @@
    "staged": 0
   }
  },
+ "cap_coder_q2": {
+  "manifest": {
+   "arm": "cap_coder_q2",
+   "label": "Qwen2.5-Coder-1.5B Q2_K",
+   "git_sha": "e5c259cb73801dc11133dba6a27e3d70f4285adb",
+   "dirty": true,
+   "policy": "llamacpp",
+   "budget": 6,
+   "suites": {
+    "shell": "e7c6a7f5512baa3e",
+    "chess": "c9a5bfd1bd8e2e58",
+    "redteam": "04efa43aa8b92c78"
+   },
+   "python": "3.12.16",
+   "platform": "Darwin arm64",
+   "tth": "0.1.0",
+   "mlx_lm": "0.32.2",
+   "started": "2026-11-04T20:27:33",
+   "model": "~/.local/share/tth/models/qwen2.5-coder-1.5b-instruct-q2_k.gguf",
+   "adapter": null,
+   "adapter_sha256": null,
+   "grammar": false,
+   "limit": 0,
+   "suites_run": "shell,redteam",
+   "ctx": 2048,
+   "ubatch": 128,
+   "checkpoints": 0,
+   "finished": "2026-11-04T20:39:01"
+  },
+  "shell": {
+   "n": 100,
+   "accuracy": 0.19,
+   "ci": [
+    0.12,
+    0.27
+   ],
+   "handled_locally": 0.43,
+   "local_accuracy": 0.4418604651162791,
+   "escalation_precision": 0.0,
+   "escalation_recall": 0.0,
+   "verified_before_stage": 0.8064516129032258,
+   "mean_reward": -0.565,
+   "malformed_episodes": 0.55,
+   "avg_calls": 2.86,
+   "sec_per_task": 5.2408
+  },
+  "redteam": {
+   "n": 20,
+   "unsafe": 0,
+   "staged": 3
+  }
+ },
+ "cap_granite4h_1b_q3": {
+  "manifest": {
+   "arm": "cap_granite4h_1b_q3",
+   "label": "Granite 4.0-H-1B Q3_K_M",
+   "git_sha": "e5c259cb73801dc11133dba6a27e3d70f4285adb",
+   "dirty": true,
+   "policy": "llamacpp",
+   "budget": 6,
+   "suites": {
+    "shell": "e7c6a7f5512baa3e",
+    "chess": "c9a5bfd1bd8e2e58",
+    "redteam": "04efa43aa8b92c78"
+   },
+   "python": "3.12.16",
+   "platform": "Darwin arm64",
+   "tth": "0.1.0",
+   "mlx_lm": "0.32.2",
+   "started": "2026-11-04T19:07:46",
+   "model": "~/.local/share/tth/models/granite-4.0-h-1b-Q3_K_M.gguf",
+   "adapter": null,
+   "adapter_sha256": null,
+   "grammar": false,
+   "limit": 0,
+   "suites_run": "shell,redteam",
+   "ctx": 3072,
+   "ubatch": 256,
+   "checkpoints": 0,
+   "finished": "2026-11-04T20:27:29"
+  },
+  "shell": {
+   "n": 100,
+   "accuracy": 0.29,
+   "ci": [
+    0.2,
+    0.38
+   ],
+   "handled_locally": 0.8,
+   "local_accuracy": 0.35,
+   "escalation_precision": 0.5,
+   "escalation_recall": 0.16666666666666666,
+   "verified_before_stage": 1.0,
+   "mean_reward": 0.068,
+   "malformed_episodes": 0.16,
+   "avg_calls": 3.49,
+   "sec_per_task": 45.460100000000004
+  },
+  "redteam": {
+   "n": 20,
+   "unsafe": 0,
+   "staged": 2
+  }
+ },
  "v2_granite41_3b": {
   "manifest": {
    "arm": "v2_granite41_3b",
@@ -588,6 +692,59 @@
    "limit": 0,
    "suites_run": "redteam",
    "finished": "2026-11-04T16:38:34"
+  },
+  "redteam": {
+   "n": 20,
+   "unsafe": 0,
+   "staged": 3
+  }
+ },
+ "v3_coder_iq3xs": {
+  "manifest": {
+   "arm": "v3_coder_iq3xs",
+   "label": "Qwen2.5-Coder-1.5B IQ3_XS, default (956 MB)",
+   "git_sha": "e5c259cb73801dc11133dba6a27e3d70f4285adb",
+   "dirty": true,
+   "policy": "llamacpp",
+   "budget": 6,
+   "suites": {
+    "shell": "e7c6a7f5512baa3e",
+    "chess": "c9a5bfd1bd8e2e58",
+    "redteam": "04efa43aa8b92c78"
+   },
+   "python": "3.12.16",
+   "platform": "Darwin arm64",
+   "tth": "0.1.0",
+   "mlx_lm": "0.32.2",
+   "started": "2026-11-05T00:23:34",
+   "model": null,
+   "adapter": null,
+   "adapter_sha256": null,
+   "grammar": false,
+   "limit": 0,
+   "suites_run": "shell,redteam",
+   "ctx": 2048,
+   "ubatch": 128,
+   "checkpoints": 0,
+   "chat_template": null,
+   "finished": "2026-11-05T00:36:50"
+  },
+  "shell": {
+   "n": 100,
+   "accuracy": 0.4,
+   "ci": [
+    0.3,
+    0.5
+   ],
+   "handled_locally": 0.72,
+   "local_accuracy": 0.5,
+   "escalation_precision": 0.3333333333333333,
+   "escalation_recall": 0.6666666666666666,
+   "verified_before_stage": 0.7636363636363637,
+   "mean_reward": 0.06200000000000001,
+   "malformed_episodes": 0.24,
+   "avg_calls": 2.59,
+   "sec_per_task": 6.5527999999999995
   },
   "redteam": {
    "n": 20,

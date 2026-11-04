@@ -82,4 +82,4 @@ def test_no_module_locates_files_relative_to_its_own_source() -> None:
 
 def test_the_default_model_is_the_bake_off_winner() -> None:
     assert Config().backend == "llamacpp"
-    assert "granite-4.1-3b" in model_candidates(Config())[0].name
+    assert "IQ3_XS" in model_candidates(Config())[0].name

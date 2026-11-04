@@ -7,8 +7,9 @@ Models
 ------
 tth downloads and runs models that aren't part of this repository. By default:
 
-Granite 4.1-3B by IBM, licensed under the Apache License, Version 2.0.
-https://huggingface.co/ibm-granite/granite-4.1-3b-GGUF
+Qwen2.5-Coder-1.5B-Instruct by the Qwen team, Alibaba Cloud, licensed under the
+Apache License, Version 2.0. GGUF conversion by bartowski.
+https://huggingface.co/bartowski/Qwen2.5-Coder-1.5B-Instruct-GGUF
 
-Also supported: Qwen2.5-Coder-1.5B-Instruct by the Qwen team, Alibaba Cloud,
-licensed under the Apache License, Version 2.0.
+Also supported: Granite 4.1-3B by IBM, licensed under the Apache License, Version 2.0.
+https://huggingface.co/ibm-granite/granite-4.1-3b-GGUF

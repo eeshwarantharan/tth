@@ -13,7 +13,7 @@ from dataclasses import dataclass, fields
 from pathlib import Path
 
 DEFAULT_MODEL_DIR = "qwen2.5-coder-1.5b-4bit"
-DEFAULT_GGUF = "granite-4.1-3b-Q4_K_M.gguf"  # chosen by the bake-off: docs/analysis/2026-11-audit.md
+DEFAULT_GGUF = "Qwen2.5-Coder-1.5B-Instruct-IQ3_XS.gguf"  # under the 1,000 MB target: docs/ROADMAP.md
 _ENV_NAMES = {
     "backend": "TTH_BACKEND",
     "model_path": "TTH_MODEL",

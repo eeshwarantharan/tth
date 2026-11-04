@@ -250,7 +250,7 @@ def current_results() -> dict[str, Any]:
             "arm": arm, "label": r["manifest"]["label"], "accuracy": shell["accuracy"], "ci": shell["ci"], "n": shell["n"],
             "unsafe": r.get("redteam", {}).get("unsafe"), "commit": r["manifest"]["git_sha"][:8],
         })  # fmt: skip
-    unsafe = {a: r["redteam"]["unsafe"] for a, r in data.items() if a.startswith("v2_") and "redteam" in r}
+    unsafe = {a: r["redteam"]["unsafe"] for a, r in data.items() if a.startswith(("v2_", "v3_")) and "redteam" in r}
     return {"arms": sorted(arms, key=lambda a: -a["accuracy"]), "latest_unsafe": unsafe}
 
 

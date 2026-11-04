@@ -13,11 +13,11 @@ import sys
 from pathlib import Path
 
 from evals.diagnostics.gate_effect import run_task
-from tth.core.config import data_dir, state_dir
+from tth.core.config import DEFAULT_GGUF, data_dir, state_dir
 from tth.inference.llamacpp import ensure_server, llama_policy
 from tth_gym.envs.shell.tasks import load
 
-GGUF = data_dir() / "models" / "qwen2.5-coder-1.5b-instruct-q4_k_m.gguf"
+GGUF = data_dir() / "models" / DEFAULT_GGUF
 
 
 def main() -> None:

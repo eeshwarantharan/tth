@@ -1,0 +1,28 @@
+{
+ "arm": "cap_coder_q2",
+ "label": "Qwen2.5-Coder-1.5B Q2_K",
+ "git_sha": "e5c259cb73801dc11133dba6a27e3d70f4285adb",
+ "dirty": true,
+ "policy": "llamacpp",
+ "budget": 6,
+ "suites": {
+  "shell": "e7c6a7f5512baa3e",
+  "chess": "c9a5bfd1bd8e2e58",
+  "redteam": "04efa43aa8b92c78"
+ },
+ "python": "3.12.16",
+ "platform": "Darwin arm64",
+ "tth": "0.1.0",
+ "mlx_lm": "0.32.2",
+ "started": "2026-11-04T20:27:33",
+ "model": "~/.local/share/tth/models/qwen2.5-coder-1.5b-instruct-q2_k.gguf",
+ "adapter": null,
+ "adapter_sha256": null,
+ "grammar": false,
+ "limit": 0,
+ "suites_run": "shell,redteam",
+ "ctx": 2048,
+ "ubatch": 128,
+ "checkpoints": 0,
+ "finished": "2026-11-04T20:39:01"
+}
