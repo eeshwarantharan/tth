@@ -13,7 +13,7 @@ from dataclasses import dataclass, fields
 from pathlib import Path
 
 DEFAULT_MODEL_DIR = "qwen2.5-coder-1.5b-4bit"
-DEFAULT_GGUF = "qwen2.5-coder-1.5b-instruct-q4_k_m.gguf"
+DEFAULT_GGUF = "granite-4.1-3b-Q4_K_M.gguf"  # chosen by the bake-off: docs/analysis/2026-11-audit.md
 _ENV_NAMES = {
     "backend": "TTH_BACKEND",
     "model_path": "TTH_MODEL",
@@ -43,7 +43,7 @@ def data_dir() -> Path:
 
 @dataclass(frozen=True)
 class Config:
-    backend: str = "mlx"
+    backend: str = "llamacpp"
     model_path: str | None = None
     adapter: str | None = None
     base_url: str = "http://127.0.0.1:8080/v1"

@@ -50,7 +50,7 @@ Layers and one-way dependencies are enforced by `uv run lint-imports`.
 - `python-chess` + Stockfish (training verifiers; never used as a judge model)
 - Official MCP Python SDK (`mcp`) and the official A2A Python SDK
 - Training: TRL (SFT, GRPO) + PEFT/LoRA; vLLM for rollouts when available
-- Base model: Qwen2.5-Coder-1.5B-Instruct (Apache-2.0). Keep the license notice in all releases.
+- Default model: Granite 4.1-3B (Apache-2.0), chosen by bake-off. Qwen2.5-Coder-1.5B stays supported. Keep license notices in all releases.
 - Inference: llama.cpp (GGUF) and MLX
 
 ## Commands

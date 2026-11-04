@@ -268,7 +268,7 @@ footer .wrap { display: grid; gap: 0.5rem; }
       <span class="status">Early research preview, not ready for daily use</span>
       <h1>A small model that looks before it acts.</h1>
       <p class="lede">tth turns plain English into a shell command. It checks your real files in a read-only sandbox, then puts the command on your prompt. You decide whether to run it.</p>
-      <p>It runs on your laptop, and it's trained in an open RL gym where only software verifiers hand out rewards.</p>
+      <p>It runs on your laptop. An open RL gym, where only software verifiers hand out rewards, tests every change to it.</p>
       <div class="actions">
         <a class="button primary" href="https://github.com/eeshwarantharan/tth">View on GitHub</a>
         <a class="button" href="#findings">See what we've found</a>
@@ -308,7 +308,7 @@ footer .wrap { display: grid; gap: 0.5rem; }
     <div class="flow">
       <div class="node"><span class="proto">MCP</span><b>Tools</b><span class="small">Inspect the directory, read a file's header, dry-run a command. The sandbox and secret checks live here, so no client can skip them.</span></div>
       <div class="link">tools</div>
-      <div class="node core"><span class="proto" style="color:var(--term-accent)">on your machine</span><b>Small model</b><span class="small">Picks one tool at a time. A grammar generated from each tool's schema keeps every call valid.</span></div>
+      <div class="node core"><span class="proto" style="color:var(--term-accent)">on your machine</span><b>Small model</b><span class="small">Picks one tool at a time, and fills in slots where a compiler tool can write the command for it. A gate tests whatever it proposes.</span></div>
       <div class="link">help</div>
       <div class="node"><span class="proto">A2A</span><b>Expert agent</b><span class="small">Found by its Agent Card. You see the exact text and where it goes before anything is sent. Its answer gets tested locally like any other.</span></div>
       <div class="down" aria-hidden="true">↓</div>
@@ -327,9 +327,9 @@ footer .wrap { display: grid; gap: 0.5rem; }
       <div class="head">
         <h3>How MCP can make a small model better</h3>
         <ul class="points">
-          <li><b>Schema to grammar</b><span>Every tool's schema becomes a decoding grammar, so malformed calls can't happen.</span></li>
-          <li><b>Verify, then commit</b><span><code>stage</code> only becomes available after a passing check. This targets the looping we measured.</span></li>
-          <li><b>Compiler tools</b><span>The model fills in <code>csv_aggregate(file, op, column, where)</code>, and the tool writes the <code>awk</code>.</span></li>
+          <li><b>Schema to grammar</b><span>Available, and off by default. We measured it: same accuracy, ten times slower.</span></li>
+          <li><b>Verify, then commit</b><span>Built. Staging tests the command first, and repeating a passing test commits it. The looping we measured is mostly gone.</span></li>
+          <li><b>Compiler tools</b><span>Built. The model fills in <code>aggregate(file, op, column, where)</code>, and the tool writes and tests the <code>awk</code> or <code>jq</code>.</span></li>
           <li><b>Domain packs</b><span>New capability arrives as a server with its own gym tasks, with no change to the core.</span></li>
         </ul>
       </div>
@@ -343,7 +343,7 @@ footer .wrap { display: grid; gap: 0.5rem; }
         </ul>
       </div>
     </div>
-    <p class="small">These are plans, and each one has to prove itself on the improvement ladder below or it gets removed.</p>
+    <p class="small">Each one has to prove itself on the improvement ladder below, or it gets removed. Domain packs, lessons and local expert tiers are still plans.</p>
   </div>
 </section>
 
@@ -385,11 +385,11 @@ footer .wrap { display: grid; gap: 0.5rem; }
         <table>
           <thead><tr><th>Step</th><th>Change</th><th>Result</th></tr></thead>
           <tbody>
-            <tr><td class="mono">L0</td><td>Stock model, one per candidate</td><td class="ladder-status">not run</td></tr>
-            <tr><td class="mono">L1</td><td>Grammar from MCP schemas</td><td class="ladder-status">not run</td></tr>
-            <tr><td class="mono">L2</td><td>Verify, then commit, by construction</td><td class="ladder-status">not run</td></tr>
+            <tr><td class="mono">L0</td><td>Stock model, one per candidate</td><td class="ladder-status">measured</td></tr>
+            <tr><td class="mono">L1</td><td>Grammar from MCP schemas</td><td class="ladder-status">off by default: same accuracy, 10× slower</td></tr>
+            <tr><td class="mono">L2</td><td>Verify, then commit, by construction</td><td class="ladder-status">kept: looping mostly gone</td></tr>
             <tr><td class="mono">L3</td><td>Compact prompt, structured observations</td><td class="ladder-status">not run</td></tr>
-            <tr><td class="mono">L4</td><td>Compiler tools</td><td class="ladder-status">not run</td></tr>
+            <tr><td class="mono">L4</td><td>Compiler tools</td><td class="ladder-status">kept, with L5 prose reading: Granite 43 → 58</td></tr>
             <tr><td class="mono">L5</td><td>Retrieved lessons</td><td class="ladder-status">not run</td></tr>
             <tr><td class="mono">L6</td><td>Fine-tuning from demonstrations</td><td class="ladder-status">not run</td></tr>
             <tr><td class="mono">L7</td><td>DAgger rounds</td><td class="ladder-status">not run</td></tr>
@@ -406,8 +406,16 @@ footer .wrap { display: grid; gap: 0.5rem; }
   <div class="wrap">
     <div class="head">
       <p class="eyebrow">Findings</p>
-      <h2>What we got wrong, and what it taught us.</h2>
+      <h2>What we measured, and what we got wrong.</h2>
       <p>Our first training run scored 0 out of 100. It looked like the model had forgotten everything. It hadn't. Training had taught it to end its turn before it learned the tag that opens a tool call, so it replied with nothing.</p>
+    </div>
+    <div class="head">
+      <h3>Where it stands now</h3>
+      <p>Stock models on 100 held-out shell tasks, through the real gate, with no training. The best setup is Granite 4.1-3B with compiler tools, which beats the previous model by 40 points on the same tasks (95% interval 29 to 51). It uses about 2.6 GB of memory and takes about 15 seconds per task, so it's more than we'd like on both.</p>
+    </div>
+    <div class="tablewrap"><table id="current-table"></table></div>
+    <div class="head">
+      <h3>How the first training run failed</h3>
     </div>
     <div class="two">
       <figure class="chart" style="margin:0">
@@ -466,7 +474,7 @@ footer .wrap { display: grid; gap: 0.5rem; }
     <div class="two">
       <div class="head">
         <h3>Try it</h3>
-        <p>On Apple Silicon, with the untrained model, so expect mistakes. Always read a command before you run it.</p>
+        <p>With a stock model that's right a bit over half the time on our test tasks, so expect mistakes. Always read a command before you run it.</p>
         <p><a href="https://github.com/eeshwarantharan/tth#quickstart">Full quickstart</a> · <a href="https://github.com/eeshwarantharan/tth/blob/main/CONTRIBUTING.md">Contributing guide</a> · <a href="https://github.com/eeshwarantharan/tth/blob/main/SECURITY.md">Security policy</a></p>
       </div>
       <pre class="code"><span class="c"># get the code and check your setup</span>

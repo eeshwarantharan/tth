@@ -15,7 +15,7 @@
 </div>
 
 > [!WARNING]
-> **tth is an early research preview, and not ready for daily use.** The model is often wrong, and the safety layer hasn't been independently reviewed. Always read a staged command before pressing Enter. The [audit](docs/analysis/2026-11-audit.md) has the details.
+> **tth is an early research preview, and not ready for daily use.** The model is wrong about four times in ten on our test tasks, and the safety layer hasn't been independently reviewed. Always read a staged command before pressing Enter. The [audit](docs/analysis/2026-11-audit.md) has the details.
 
 ## What it does
 
@@ -47,37 +47,39 @@ find src -name '*.py' | wc -l
 | Chess, table and shell gym environments | Work |
 | MCP | The agent reaches tools only through a real MCP client, and other agents can use `tth mcp`. The gym moves over in Phase 4 |
 | A2A | The only path to an expert: Agent Cards, task states, evidence requests with fresh consent, typed answers. Any A2A agent can be an expert |
-| Trained model | **None worth shipping.** No trained arm has beaten the untrained base |
-| llama.cpp backend | Only through an OpenAI-compatible server you run yourself (Phase 3) |
+| Trained model | **None worth shipping.** The default is a stock model. No trained model has beaten one yet |
+| llama.cpp backend | The default: a warm local server that stays loaded between requests |
 | `pip install tth` | Wheel builds and works from a clean install on macOS. Not published to PyPI yet |
 
 ## Results so far
 
-**The honest headline: training hasn't improved the model yet, and we now know why the first attempt failed.**
+**The headline: a stock model scores 58 of 100 on held-out shell tasks with no training, and nothing we've trained has beaten a stock model yet.**
 
-The recorded results showed trained arms at 0/100. They weren't failing at reasoning: training made end-of-turn likely without teaching the model's tool-call tag, so it replied with nothing. Forcing the tag, with no retraining, brought those same weights back:
-
-| Arm | Recorded (100 tasks) | Forced format (20 tasks) |
+| Setup, on 100 held-out shell tasks | Correct (95% CI) | Unsafe, of 20 |
 |---|---|---|
-| Untrained base | 9/100 | 5/20; 7/20 unforced |
-| Shell training only | 0/100 | 4/20 |
-| Chess → shell | 0/100 | 4/20 |
-| Table → shell | 0/100 | 4/20 |
+| **Granite 4.1-3B + compiler tools (default)** | **58** (48–67) | 0 |
+| Granite 4.1-3B, stock | 43 (33–52) | 0 |
+| Qwen3-1.7B, stock | 26 (2–11) | 0 on final code |
+| Qwen2.5-Coder-1.5B, stock | 25 (1–10) | 0 |
+| Random baseline | 5 (1–10) | 0 |
 
-These 20-task runs are small and their confidence intervals all overlap, so no arm is shown to beat another. Trained arms do verify more often, but they usually loop until they run out of steps. Red-team runs staged 0 unsafe commands out of 20 for every arm, mostly because the models staged almost nothing.
+- It costs about 2.6 GB of memory and 15 seconds per task, more than we'd like on both.
+- These tasks are synthetic, and their families overlap with training templates, so expect lower numbers on real work.
+- The first training run scored 0/100 because training never taught the model its tool-call tag. Fine-tuning hasn't had a fair test yet: it had 90 examples and 12 steps.
 
-Sources: [recorded v0.1 results](evals/results-v0.1/RESULTS.md) · [diagnostics](evals/diagnostics/) · [full audit](docs/analysis/2026-11-audit.md)
+Sources: [current results](evals/results/RESULTS.md) · [full audit](docs/analysis/2026-11-audit.md) · [v0.1 results](evals/results-v0.1/RESULTS.md)
 
 ## Quickstart
 
-macOS on Apple Silicon. This uses the **untrained base model**, so expect mistakes.
+On macOS or Linux, with `uv`. It uses a stock model that's right a bit over half the time on our test tasks, so read every command before you run it.
 
 ```bash
 git clone https://github.com/eeshwarantharan/tth.git && cd tth
 uv sync
+brew install llama.cpp   # or build llama-server another way, and put it on your PATH
 
-# Download the 4-bit model (839 MB on disk)
-uv run hf download mlx-community/Qwen2.5-Coder-1.5B-Instruct-4bit --local-dir ~/.local/share/tth/models/qwen2.5-coder-1.5b-4bit
+# Download the model (2.1 GB on disk, about 2.6 GB of memory)
+uv run hf download ibm-granite/granite-4.1-3b-GGUF granite-4.1-3b-Q4_K_M.gguf --local-dir ~/.local/share/tth/models
 
 uv run tth setup   # checks the sandbox, model and backend
 
@@ -87,7 +89,7 @@ echo 'eval "$(tth init zsh)"' >> ~/.zshrc && exec zsh
 
 Then use `t <request>`, or type a request and press Ctrl-G.
 
-On Linux, install `bubblewrap`, use `tth init bash`, and run a model behind an OpenAI-compatible server (for example `llama-server`) with `--backend openai`.
+On Linux, also install `bubblewrap`, and use `tth init bash`. For less memory, set `backend = "mlx"` in `~/.config/tth/config.toml` and use the smaller Qwen2.5-Coder model, which scores about 25.
 
 To try escalation, copy [`.env.example`](.env.example) to `~/.config/tth/.env` and add a key, or point `expert_base_url` at any OpenAI-compatible model. tth never reads a project's own `.env`.
 

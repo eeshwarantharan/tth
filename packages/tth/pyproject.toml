@@ -24,12 +24,12 @@ dependencies = [
   "mcp>=2.3",
   "a2a-sdk>=1.3",
   "httpx>=0.27",
+  "openai>=1.40",
 ]
 
 [project.optional-dependencies]
 mlx = ["mlx-lm>=0.32"]
-openai = ["openai>=1.40"]
-expert = ["openai>=1.40", "uvicorn>=0.30", "a2a-sdk[http-server]>=1.3"]
+expert = ["uvicorn>=0.30", "a2a-sdk[http-server]>=1.3"]
 
 [project.scripts]
 tth = "tth.cli.main:main"

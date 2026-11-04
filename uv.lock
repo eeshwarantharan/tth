@@ -2802,6 +2802,7 @@ dependencies = [
     { name = "a2a-sdk" },
     { name = "httpx" },
     { name = "mcp" },
+    { name = "openai" },
     { name = "pydantic" },
     { name = "tree-sitter" },
     { name = "tree-sitter-bash" },
@@ -2810,14 +2811,10 @@ dependencies = [
 [package.optional-dependencies]
 expert = [
     { name = "a2a-sdk", extra = ["http-server"] },
-    { name = "openai" },
     { name = "uvicorn" },
 ]
 mlx = [
     { name = "mlx-lm" },
-]
-openai = [
-    { name = "openai" },
 ]
 
 [package.metadata]
@@ -2827,14 +2824,13 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.27" },
     { name = "mcp", specifier = ">=2.3" },
     { name = "mlx-lm", marker = "extra == 'mlx'", specifier = ">=0.32" },
-    { name = "openai", marker = "extra == 'expert'", specifier = ">=1.40" },
-    { name = "openai", marker = "extra == 'openai'", specifier = ">=1.40" },
+    { name = "openai", specifier = ">=1.40" },
     { name = "pydantic", specifier = ">=2.7" },
     { name = "tree-sitter", specifier = ">=0.23" },
     { name = "tree-sitter-bash", specifier = ">=0.23" },
     { name = "uvicorn", marker = "extra == 'expert'", specifier = ">=0.30" },
 ]
-provides-extras = ["mlx", "openai", "expert"]
+provides-extras = ["mlx", "expert"]
 
 [[package]]
 name = "tth-dev"
@@ -2876,7 +2872,7 @@ name = "tth-gym"
 version = "0.1.0"
 source = { editable = "packages/tth-gym" }
 dependencies = [
-    { name = "tth", extra = ["openai"] },
+    { name = "tth" },
 ]
 
 [package.optional-dependencies]
@@ -2897,7 +2893,7 @@ requires-dist = [
     { name = "safetensors", marker = "extra == 'train'", specifier = ">=0.4" },
     { name = "torch", marker = "extra == 'train'", specifier = ">=2.2" },
     { name = "transformers", marker = "extra == 'train'", specifier = ">=4.45" },
-    { name = "tth", extras = ["openai"], editable = "packages/tth" },
+    { name = "tth", editable = "packages/tth" },
 ]
 provides-extras = ["chess", "train"]
 

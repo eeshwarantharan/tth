@@ -110,7 +110,7 @@ def _llama_policy(config: Config) -> object | None:
     try:
         from tth.inference.llamacpp import ServerUnavailable, ensure_server, llama_policy
     except ImportError:
-        ui.problem("The llama.cpp backend isn't installed.", "Run: pip install 'tth[openai]'")
+        ui.problem("The llama.cpp backend isn't installed.", "Run: pip install tth")
         return None
     with_backend = replace(config, backend="llamacpp")
     model = find_model(with_backend)
@@ -146,7 +146,7 @@ def _make_policy(args: argparse.Namespace, config: Config) -> object | None:
     try:
         from tth.inference.openai_compat import OpenAIPolicy
     except ImportError:
-        ui.problem("The OpenAI-compatible backend isn't installed.", "Run: pip install 'tth[openai]'")
+        ui.problem("The OpenAI-compatible backend isn't installed.", "Run: pip install tth")
         return None
     return OpenAIPolicy(model=args.model, base_url=args.base_url or config.base_url, api_key="local", thinking=False,
                         temperature=0.0, max_tokens=512)  # fmt: skip
@@ -266,7 +266,10 @@ def cmd_setup(args: argparse.Namespace) -> int:
         err(f"model: missing. Looked in: {', '.join(str(p) for p in model_candidates(config))}")
         err("  Download it with:")
         err("    pip install huggingface_hub")
-        err(f"    hf download mlx-community/Qwen2.5-Coder-1.5B-Instruct-4bit --local-dir '{target}'")
+        if config.backend == "llamacpp":
+            err(f"    hf download ibm-granite/granite-4.1-3b-GGUF {target.name} --local-dir '{target.parent}'")
+        else:
+            err(f"    hf download mlx-community/Qwen2.5-Coder-1.5B-Instruct-4bit --local-dir '{target}'")
     if config.backend == "mlx":
         try:
             import mlx_lm  # noqa: F401

@@ -17,8 +17,8 @@
 | 1 | Safety hardening | Done |
 | Site | Project page on GitHub Pages, updated after every phase | Live |
 | 2 | Restructure into `tth` and `tth-gym` | Done |
-| 3 | MCP and A2A at the core, grammar, llama.cpp, terminal UI | Next |
-| 4 | Gym core, honest baselines, model bake-off | Planned |
+| 3 | MCP and A2A at the core, grammar, llama.cpp, terminal UI | Done |
+| 4 | Gym core, honest baselines, model bake-off | Next: wider task families and a real-world held-out suite remain |
 | 5 | Teacher-student lab, fine-tuning, quantization | Planned |
 | 6 | Release | Planned |
 
@@ -26,18 +26,18 @@
 
 Each change is one rung, scored against the rung below it on the same held-out tasks, with paired bootstrap CIs and at least 3 seeds where training is involved. It ships only if it wins.
 
-| Rung | Change |
-|---|---|
-| L0 | Stock model (one per bake-off candidate) |
-| L1 | + grammar generated from MCP tool schemas |
-| L2 | + verify, then commit, by construction |
-| L3 | + compact prompt and structured observations |
-| L4 | + compiler tools (the model fills slots, tools write the command) |
-| L5 | + retrieved lessons (few-shot) |
-| L6 | + SFT from oracle and teacher demos |
-| L7 | + DAgger rounds |
-| L8 | + RL (GRPO) |
-| Q | Quantization matrix on the winner |
+| Rung | Change | Result (100 held-out shell tasks unless noted) |
+|---|---|---|
+| L0 | Stock model (one per bake-off candidate) | Measured. Random baseline 5, current model 25, Qwen3-1.7B 26, Granite 4.1-3B 43 |
+| L1 | + grammar generated from MCP tool schemas | **Off by default.** 7/20 either way, at 10 times the time |
+| L2 | + verify, then commit, by construction | **Kept.** Runs out of attempts fell from 15–16 of 20 to 0–5 for trained adapters |
+| L3 | + compact prompt and structured observations | Not run |
+| L4 | + compiler tools (the model fills slots, tools write the command) | **Kept for Granite**, with prose reading: 43 → 58. Measured together, so not separated. The previous model went from 25 to 18 (paired interval −17 to +3) |
+| L5 | + retrieved lessons (few-shot) | Not run |
+| L6 | + SFT from oracle and teacher demos | Not run |
+| L7 | + DAgger rounds | Not run |
+| L8 | + RL (GRPO) | Not run |
+| Q | Quantization matrix on the winner | Not run |
 
 **Stop rule.** If the best student can't beat the stock model with grammar after at least 5k verified rows, training investment stops. tth then ships the best stock model with the safety layer, and the gym stays as an open benchmark.
 

@@ -58,7 +58,7 @@ def test_model_is_found_in_the_user_data_dir(tmp_path: Path, monkeypatch: pytest
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
     model = tmp_path / "tth" / "models" / "qwen2.5-coder-1.5b-4bit"
     model.mkdir(parents=True)
-    assert find_model(Config(), cwd=tmp_path / "elsewhere") == model
+    assert find_model(Config(backend="mlx"), cwd=tmp_path / "elsewhere") == model
 
 
 def test_a_projects_own_env_file_is_never_loaded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -78,3 +78,8 @@ def test_no_module_locates_files_relative_to_its_own_source() -> None:
             if isinstance(node, ast.Name) and node.id == "__file__":
                 offenders.append(f"{f.name}:{node.lineno}")
     assert not offenders, offenders
+
+
+def test_the_default_model_is_the_bake_off_winner() -> None:
+    assert Config().backend == "llamacpp"
+    assert "granite-4.1-3b" in model_candidates(Config())[0].name

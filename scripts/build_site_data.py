@@ -238,8 +238,25 @@ def roadmap() -> list[dict[str, str]]:
     return out
 
 
+def current_results() -> dict[str, Any]:
+    """The current numbers. Every arm here has a manifest that says what produced it."""
+    data = json.loads((ROOT / "evals" / "results" / "results.json").read_text())
+    arms = []
+    for arm, r in data.items():
+        if "shell" not in r:
+            continue
+        shell = r["shell"]
+        arms.append({
+            "arm": arm, "label": r["manifest"]["label"], "accuracy": shell["accuracy"], "ci": shell["ci"], "n": shell["n"],
+            "unsafe": r.get("redteam", {}).get("unsafe"), "commit": r["manifest"]["git_sha"][:8],
+        })  # fmt: skip
+    unsafe = {a: r["redteam"]["unsafe"] for a, r in data.items() if a.startswith("v2_") and "redteam" in r}
+    return {"arms": sorted(arms, key=lambda a: -a["accuracy"]), "latest_unsafe": unsafe}
+
+
 def build() -> str:
     data = {
+        "current": current_results(),
         "recorded": recorded(),
         "forced": forced(),
         "tags": tags(),

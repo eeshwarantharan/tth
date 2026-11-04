@@ -3,10 +3,12 @@ Copyright 2026 Tharaneeshwaran V U and tth contributors
 
 This product is licensed under the Apache License, Version 2.0. See LICENSE.
 
-Base model
-----------
-tth is designed to run with Qwen2.5-Coder-1.5B-Instruct by the Qwen team,
-Alibaba Cloud, licensed under the Apache License, Version 2.0.
-https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct
+Models
+------
+tth downloads and runs models that aren't part of this repository. By default:
 
-The model weights are not part of this repository.
+Granite 4.1-3B by IBM, licensed under the Apache License, Version 2.0.
+https://huggingface.co/ibm-granite/granite-4.1-3b-GGUF
+
+Also supported: Qwen2.5-Coder-1.5B-Instruct by the Qwen team, Alibaba Cloud,
+licensed under the Apache License, Version 2.0.

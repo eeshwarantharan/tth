@@ -26,7 +26,7 @@ from tth.trace.schema import TraceLogger
 from tth_gym.core.mcp_env import McpEnvironment
 
 RESULTS = Path("evals/results")
-DEFAULT_GGUF = "qwen2.5-coder-1.5b-instruct-q4_k_m.gguf"
+DEFAULT_GGUF = "granite-4.1-3b-Q4_K_M.gguf"
 SUITE_FILES = {
     "shell": Path("evals/shell/tasks.jsonl"),
     "chess": Path("evals/chess/tasks.jsonl"),

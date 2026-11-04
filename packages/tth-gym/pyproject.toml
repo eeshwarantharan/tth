@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
 authors = [{ name = "Tharaneeshwaran V U" }]
-dependencies = ["tth[openai]"]
+dependencies = ["tth"]
 
 [project.optional-dependencies]
 chess = ["python-chess>=1.999"]

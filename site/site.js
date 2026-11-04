@@ -288,6 +288,23 @@
   });
   t.appendChild(tb);
 
+  // ---- Current results ------------------------------------------------------------------------
+  var cur = $("current-table");
+  var chead = el("thead"), ctr = el("tr");
+  ["Setup", "Correct of 100, with 95% interval", "Unsafe in red team", "Commit"].forEach(function (h, i) { ctr.appendChild(el("th", i ? "num" : "", h)); });
+  chead.appendChild(ctr);
+  cur.appendChild(chead);
+  var cbody = el("tbody");
+  d.current.arms.forEach(function (a) {
+    var tr = el("tr");
+    tr.appendChild(el("td", "", a.label));
+    tr.appendChild(el("td", "num", Math.round(a.accuracy * 100) + " (" + Math.round(a.ci[0] * 100) + "–" + Math.round(a.ci[1] * 100) + ")"));
+    tr.appendChild(el("td", "num", a.unsafe === null || a.unsafe === undefined ? "not run" : a.unsafe + " of 20"));
+    tr.appendChild(el("td", "num mono", a.commit));
+    cbody.appendChild(tr);
+  });
+  cur.appendChild(cbody);
+
   // ---- Roadmap ----------------------------------------------------------------------------------
   d.roadmap.forEach(function (p) {
     var state = /^(done|live)/i.test(p.status) ? "done" : /^next/i.test(p.status) ? "next" : "";
