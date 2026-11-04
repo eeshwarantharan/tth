@@ -3,7 +3,7 @@
 
   <h1>tth, the tiny terminal helper</h1>
 
-  <p><strong>Small but good.</strong> A local small-model agent that looks before it acts, never runs your command, and knows when to ask for help.</p>
+  <p><strong>Small but good.</strong> A terminal agent built to run on a ~1.5B model in under 1 GB of RAM. It looks before it acts, never runs your command, and knows when to ask for help.</p>
 
   <p><a href="https://eeshwarantharan.github.io/tth/">Project site</a> · <a href="docs/ROADMAP.md">Roadmap</a> · <a href="docs/analysis/2026-11-audit.md">Audit</a></p>
 
@@ -35,6 +35,25 @@ find src -name '*.py' | wc -l
 - **Escalation needs consent.** You see exactly what would be sent, secrets redacted, and the default is no.
 - **Training happens in a gym with verifiable rewards.** Software verifiers assign rewards, never an LLM.
 
+## The goal
+
+tth is a terminal agent that runs on a ~1.5B model in under 1 GB of RAM. It inspects your machine, tests the command in a read-only sandbox, and puts it on your prompt without running it. When it can't verify a command, it asks a stronger agent, but only with your consent.
+
+**The research question:** can a large model's verified reasoning make a small model better at terminal tasks that need reasoning, and does chess practice add anything? So far, training has only copied tool calls, so [this hasn't been tested](evals/diagnostics/results/reasoning_in_data.json).
+
+These are targets, and **none of them has been met yet**:
+
+| Area | Done when |
+|---|---|
+| Size | A ~1.5B model stays under 1,000 MB, counting weights, working memory and the CLI process |
+| Speed | Under 3s for easy tasks, under 10s for hard ones |
+| Safety | 0 unsafe commands staged on the red-team suite, and tth never runs the final command |
+| Reasoning transfer | Reasoning-trained beats actions-only on a held-out reasoning suite, across 3+ seeds, with a confidence interval that excludes zero |
+| Chess | Chess practice beats a non-chess control and more shell training. Published either way |
+| Public proof | Published scores on NL2SH-ALFA plus our own reasoning suite |
+
+Out of scope: general coding, training on your device, firewalling other agents, and agent swarms.
+
 ## Status
 
 | Area | State |
@@ -59,11 +78,11 @@ find src -name '*.py' | wc -l
 |---|---|---|
 | **Granite 4.1-3B + compiler tools (default)** | **58** (48–67) | 0 |
 | Granite 4.1-3B, stock | 43 (33–52) | 0 |
-| Qwen3-1.7B, stock | 26 (2–11) | 0 on final code |
-| Qwen2.5-Coder-1.5B, stock | 25 (1–10) | 0 |
+| Qwen3-1.7B, stock | 26 (17–34) | 0 on final code |
+| Qwen2.5-Coder-1.5B, stock | 25 (17–34) | 0 |
 | Random baseline | 5 (1–10) | 0 |
 
-- It costs about 2.6 GB of memory and 15 seconds per task, more than we'd like on both.
+- The default costs about 2.6 GB of memory and a median of 15 seconds per task, so it **misses the size and speed goals**. A sub-1 GB bake-off will replace it.
 - These tasks are synthetic, and their families overlap with training templates, so expect lower numbers on real work.
 - The first training run scored 0/100 because training never taught the model its tool-call tag. Fine-tuning hasn't had a fair test yet: it had 90 examples and 12 steps.
 
@@ -110,9 +129,9 @@ To try escalation, copy [`.env.example`](.env.example) to `~/.config/tth/.env` a
                            (you press Enter, or you don't)
 ```
 
-**The training idea:** a gym with hidden state, verifiable rewards, randomized tool schemas and injected errors. A teacher generates demonstrations, verifiers keep only the correct ones, and the student learns from them. It then practices in the gym, with the teacher stepping in when it fails.
+**The training idea:** a gym with hidden state, verifiable rewards, randomized tool schemas and injected errors. A large model works through tasks and writes down short reasoning, verifiers keep only what leads to correct results, and the small model learns from it. In chess, the student plays, and at a blunder the teacher explains why and gives a better move, with Stockfish scoring both.
 
-**Where this is heading:** MCP becomes the only way the model reaches tools, and A2A the only way it reaches help, in both the product and the gym. See the [roadmap](docs/ROADMAP.md).
+**What the protocols are for:** MCP is the single tool contract, so what we train on is what ships. A2A makes the expert swappable: Granite on your Mac, a machine on your network, or a cloud model. They aren't what keeps you safe. That's the sandbox, the classifier and the consent step. See the [roadmap](docs/ROADMAP.md).
 
 ## Repository layout
 
@@ -140,4 +159,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Report security issues privately, as des
 
 ## License
 
-Apache-2.0, see [LICENSE](LICENSE). The base model, Qwen2.5-Coder-1.5B-Instruct, is Apache-2.0 from the Qwen team, see [NOTICE](NOTICE).
+Apache-2.0, see [LICENSE](LICENSE). The models keep their own licenses, listed in [NOTICE](NOTICE).

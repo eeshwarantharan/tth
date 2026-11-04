@@ -536,12 +536,12 @@ window.TTH = {
   },
   {
    "phase": "4",
-   "scope": "Gym core, honest baselines, model bake-off",
-   "status": "Next: wider task families and a real-world held-out suite remain"
+   "scope": "Gym core, honest baselines, sub-1 GB bake-off, reasoning suite",
+   "status": "Next: the sub-1 GB model choice and a reasoning suite remain"
   },
   {
    "phase": "5",
-   "scope": "Teacher-student lab, fine-tuning, quantization",
+   "scope": "Reasoning transfer: teacher rationales, real chess play, preregistered test",
    "status": "Planned"
   },
   {

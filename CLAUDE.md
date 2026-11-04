@@ -8,16 +8,32 @@ A small on-device model (~1.5B) that turns plain-English requests into shell com
 
 The model learns this discipline in a **chess training environment** (hidden board, verifiable moves, tool calls with randomized schemas). It then transfers the habit to the shell with a short fine-tune. Chess is the training ground; the terminal is the product.
 
-### The pitch, in one line
-A small model that runs on your machine, wrapped in deterministic safety: private, offline, and it escalates only with your consent.
+### Definition
+tth is a terminal agent that runs on a ~1.5B model in under 1 GB of RAM. It inspects your machine, tests the command in a read-only sandbox, and puts it on your prompt without running it. When it can't verify a command, it asks a stronger agent, but only with your consent.
+
+**Research question:** can a large model's verified reasoning make a small model better at terminal tasks that need reasoning, and does chess practice add anything?
+
+### Goal
+These are targets. Report them as results only once they've been measured.
+
+| Area | Done when |
+|---|---|
+| Size | A ~1.5B model stays under 1,000 MB on the M2, counting weights, working memory and the CLI process (`evals/diagnostics/memory.py`) |
+| Speed | Under 3s for easy tasks, under 10s for hard ones |
+| Safety | 0 unsafe commands staged on the red-team suite; tth never runs the final command |
+| Reasoning transfer | Reasoning-trained beats actions-only on a held-out reasoning suite, across 3+ seeds, with a confidence interval that excludes zero |
+| Chess | Chess practice beats the non-chess control and more shell training. Published either way |
+| Public proof | Published scores on NL2SH-ALFA plus our own reasoning suite |
+
+**Out of scope:** general coding, training on the user's device, firewalling other agents, agent swarms.
 
 ### Current direction
 `docs/ROADMAP.md` is the plan and `docs/analysis/2026-11-audit.md` the evidence behind it. Where this file and the roadmap disagree on layout or milestones, the roadmap wins; the invariants below always apply. Everything must measurably improve the small model on the shipped artifact.
 
 ### Protocol roles
-- **MCP**: how the model sees the world (shell probes in the product; board tools in training).
-- **A2A**: how the model asks for help (an expert agent: a larger local model or a cloud model).
-- **Teacher model**: generates training trajectories (verified before use) and serves as the expert agent.
+- **MCP**: the single tool contract. Training and the product use the same tools, so what we train on is what ships. It isn't the security boundary: the sandbox is.
+- **A2A**: the swappable expert. Granite on this machine, a machine on the network or a cloud model, with no vendor lock-in. It isn't what protects privacy: the consent and redaction step is.
+- **Teacher model**: generates reasoning and trajectories (verified before use) and serves as the expert agent.
 
 ## Non-negotiable invariants
 
@@ -50,7 +66,7 @@ Layers and one-way dependencies are enforced by `uv run lint-imports`.
 - `python-chess` + Stockfish (training verifiers; never used as a judge model)
 - Official MCP Python SDK (`mcp`) and the official A2A Python SDK
 - Training: TRL (SFT, GRPO) + PEFT/LoRA; vLLM for rollouts when available
-- Default model: Granite 4.1-3B (Apache-2.0), chosen by bake-off. Qwen2.5-Coder-1.5B stays supported. Keep license notices in all releases.
+- Default model today: Granite 4.1-3B (Apache-2.0), which misses the size goal. A sub-1 GB bake-off replaces it, and it can then serve as a local expert. Keep license notices in all releases.
 - Inference: llama.cpp (GGUF) and MLX
 
 ## Commands
@@ -102,11 +118,13 @@ Step budget: default 6 tool calls before forced escalate-or-ask.
 Verifiers (`python-chess`, Stockfish, container execution) assign reward. The teacher model never does.
 
 ### Training pipeline
-1. Teacher generates trajectories with the same tools → keep only verifier-approved ones.
-2. SFT on verified chess trajectories.
-3. GRPO in the chess environment.
+1. Teacher generates trajectories with the same tools, including a short rationale per turn → keep only verifier-approved ones.
+2. Chess: the student plays with a short rationale per move. At a blunder, the teacher explains and gives a better move. Stockfish scores it.
+3. SFT on verified trajectories, then DAgger and GRPO.
 4. Short shell fine-tune (SFT, optionally GRPO) on containerized shell tasks.
-5. Ablations: (a) base model, (b) shell-only training, (c) chess → shell, (d) same-size non-chess synthetic tool data → shell.
+5. Ablations, preregistered and matched on training steps and tokens: (a) stock model, (b) actions only, (c) reasoning on shell, (d) chess reasoning → shell, (e) non-chess reasoning → shell, (f) reasoning on shell, enlarged by the amount of chess in (d).
+
+Reasoning-suite tasks must be unsolvable without looking: hidden values are randomized per seed, so a blind guess fails.
 
 ### Unified trace format
 Product runs and training rollouts write the same JSONL schema, so evals and the project site share one renderer:

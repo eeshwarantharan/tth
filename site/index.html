@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>tth, the tiny terminal helper</title>
-<meta name="description" content="A local small-model agent that looks before it acts, never runs your command, and asks before anything leaves your machine. An open RL gym and teacher-student training project.">
+<meta name="description" content="A terminal agent built to run on a ~1.5B model in under 1 GB of RAM. It looks before it acts, never runs your command, and asks before anything leaves your machine.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23070A10'/%3E%3Cg fill='none' stroke='%235FCB5F' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M52 29V18a8 8 0 0 0-8-8H20a8 8 0 0 0-8 8v28a8 8 0 0 0 8 8h32'/%3E%3Cpath d='M22 22l10 10-10 10'/%3E%3Cpath d='M40 44h12'/%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -250,6 +250,7 @@ footer .wrap { display: grid; gap: 0.5rem; }
       tth
     </a>
     <nav aria-label="Sections">
+      <a href="#goal">The goal</a>
       <a href="#how">How it works</a>
       <a href="#safety">Safety</a>
       <a href="#gym">The gym</a>
@@ -268,7 +269,7 @@ footer .wrap { display: grid; gap: 0.5rem; }
       <span class="status">Early research preview, not ready for daily use</span>
       <h1>A small model that looks before it acts.</h1>
       <p class="lede">tth turns plain English into a shell command. It checks your real files in a read-only sandbox, then puts the command on your prompt. You decide whether to run it.</p>
-      <p>It runs on your laptop. An open RL gym, where only software verifiers hand out rewards, tests every change to it.</p>
+      <p>We're building it to run on a ~1.5B model in under 1 GB of RAM, and we aren't there yet. An open RL gym, where only software verifiers hand out rewards, tests every change to it.</p>
       <div class="actions">
         <a class="button primary" href="https://github.com/eeshwarantharan/tth">View on GitHub</a>
         <a class="button" href="#findings">See what we've found</a>
@@ -298,12 +299,37 @@ footer .wrap { display: grid; gap: 0.5rem; }
   </div>
 </section>
 
+<section class="band" id="goal">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow">The goal</p>
+      <h2>Can a large model teach a small one how to think?</h2>
+      <p>tth is a terminal agent that runs on a ~1.5B model in under 1 GB of RAM. When it can't verify a command, it asks a stronger agent, but only with your consent.</p>
+      <p>The research question is whether a large model's verified reasoning can make that small model better at terminal tasks that need reasoning, and whether chess practice adds anything. Training so far has only copied tool calls: <a href="https://github.com/eeshwarantharan/tth/blob/main/evals/diagnostics/results/reasoning_in_data.json">4 of 376 shell teacher turns contain any text</a>. So the idea is untested, not failed.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Target, none met yet</th><th>Done when</th></tr></thead>
+        <tbody>
+          <tr><td><b>Size</b></td><td>A ~1.5B model stays under 1,000 MB, counting weights, working memory and the CLI process</td></tr>
+          <tr><td><b>Speed</b></td><td>Under 3s for easy tasks, under 10s for hard ones</td></tr>
+          <tr><td><b>Safety</b></td><td>0 unsafe commands staged on the red-team suite, and tth never runs the final command</td></tr>
+          <tr><td><b>Reasoning transfer</b></td><td>Reasoning-trained beats actions-only on a held-out reasoning suite, across 3+ seeds, with a confidence interval that excludes zero</td></tr>
+          <tr><td><b>Chess</b></td><td>Chess practice beats a non-chess control and more shell training. Published either way</td></tr>
+          <tr><td><b>Public proof</b></td><td>Published scores on NL2SH-ALFA plus our own reasoning suite</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="small">Out of scope: general coding, training on your device, firewalling other agents, and agent swarms.</p>
+  </div>
+</section>
+
 <section class="band" id="how">
   <div class="wrap">
     <div class="head">
       <p class="eyebrow">How it works</p>
-      <h2>MCP is how it sees. A2A is how it asks for help.</h2>
-      <p>The same two contracts serve the product and the training gym. To change what the model can see, swap an MCP server. To change who teaches it or helps it, swap an A2A agent.</p>
+      <h2>One contract for tools. One handoff for help.</h2>
+      <p>MCP is the single tool contract, so what we train on is what ships. A2A makes the expert swappable: a bigger model on your Mac, a machine on your network, or a cloud model. Neither one keeps you safe. That's the job of the sandbox, the classifier and the consent step.</p>
     </div>
     <div class="flow">
       <div class="node"><span class="proto">MCP</span><b>Tools</b><span class="small">Inspect the directory, read a file's header, dry-run a command. The sandbox and secret checks live here, so no client can skip them.</span></div>
@@ -325,7 +351,7 @@ footer .wrap { display: grid; gap: 0.5rem; }
     </div>
     <div class="two">
       <div class="head">
-        <h3>How MCP can make a small model better</h3>
+        <h3>What's built on MCP</h3>
         <ul class="points">
           <li><b>Schema to grammar</b><span>Available, and off by default. We measured it: same accuracy, ten times slower.</span></li>
           <li><b>Verify, then commit</b><span>Built. Staging tests the command first, and repeating a passing test commits it. The looping we measured is mostly gone.</span></li>
@@ -334,16 +360,17 @@ footer .wrap { display: grid; gap: 0.5rem; }
         </ul>
       </div>
       <div class="head">
-        <h3>How A2A can make a small model better</h3>
+        <h3>What's built on A2A</h3>
         <ul class="points">
-          <li><b>Escalation teaches</b><span>With your opt-in, a verified answer becomes a local lesson, so the same request needn't escalate twice.</span></li>
-          <li><b>Same loop as training</b><span>In the gym, a teacher takes over at the student's first failure through the same handoff.</span></li>
-          <li><b>Expert tiers</b><span>Agent Cards route to a bigger local model before anything hosted.</span></li>
-          <li><b>Answers you can check</b><span>Typed results go through the same classifier and dry-run as the model's own commands.</span></li>
+          <li><b>Answers you can check</b><span>Built. Typed results go through the same classifier and dry-run as the model's own commands.</span></li>
+          <li><b>Evidence with consent</b><span>Built. An expert can ask for another probe, and you approve what goes back.</span></li>
+          <li><b>Expert tiers</b><span>Planned. Agent Cards route to a bigger local model before anything hosted.</span></li>
+          <li><b>Same handoff as training</b><span>Planned. The gym doesn't use A2A yet. The chess teacher will take over at a blunder through this handoff.</span></li>
+          <li><b>Escalation teaches</b><span>Planned. With your opt-in, a verified answer becomes a local lesson, so the same request needn't escalate twice.</span></li>
         </ul>
       </div>
     </div>
-    <p class="small">Each one has to prove itself on the improvement ladder below, or it gets removed. Domain packs, lessons and local expert tiers are still plans.</p>
+    <p class="small">The protocols don't make the model smarter on their own, and we haven't measured escalation improving results yet. Everything aimed at the model has to prove itself on the improvement ladder below, or it gets removed. Domain packs are still a plan.</p>
   </div>
 </section>
 
@@ -369,17 +396,17 @@ footer .wrap { display: grid; gap: 0.5rem; }
       <p>Most of this project is an RL gym. Each environment hides its state behind tools, so the student has to look. Tool schemas are randomized, and errors are injected. Software assigns the reward: real execution for shell, python-chess and Stockfish for chess. A model never judges a model.</p>
     </div>
     <ol class="loop">
-      <li><b>Teachers demonstrate</b><span class="small">A scripted oracle and an LLM teacher solve tasks in the gym.</span></li>
+      <li><b>Teacher reasons</b><span class="small">A large model solves tasks in the gym and writes short reasoning for each step: goal, evidence, next check.</span></li>
       <li><b>Verifiers filter</b><span class="small">Only correct episodes with no penalties survive.</span></li>
-      <li><b>Student imitates</b><span class="small">Supervised fine-tuning on those episodes, then a quick smoke test before more GPU time.</span></li>
-      <li><b>Teacher corrects</b><span class="small">The student practises. At its first failure the teacher takes over from that state, and the fix becomes new data (DAgger).</span></li>
+      <li><b>Student imitates</b><span class="small">Supervised fine-tuning on the reasoning and the actions, then a quick smoke test before more GPU time.</span></li>
+      <li><b>Teacher corrects</b><span class="small">The student practises, including real chess. At a failure or blunder the teacher explains why and takes over, and the fix becomes new data (DAgger).</span></li>
       <li><b>Student explores</b><span class="small">RL with verifier rewards, then a quantization matrix on the final model.</span></li>
     </ol>
     <div class="two">
       <div class="head">
         <h3>The improvement ladder</h3>
         <p>Each change is scored against the step below it, on the same held-out tasks, on the final quantized build on an 8 GB laptop. A change that doesn't win gets removed.</p>
-        <p class="small">If the best student can't beat a stock model with a grammar after at least 5,000 verified episodes, we stop training and ship the stock model. The safety layer and the gym stay useful either way.</p>
+        <p class="small">If the best student can't beat the best stock model under the size cap after at least 5,000 verified episodes, we stop training and ship the stock model. The safety layer and the gym stay useful either way.</p>
       </div>
       <div class="tablewrap">
         <table>
@@ -411,7 +438,7 @@ footer .wrap { display: grid; gap: 0.5rem; }
     </div>
     <div class="head">
       <h3>Where it stands now</h3>
-      <p>Stock models on 100 held-out shell tasks, through the real gate, with no training. The best setup is Granite 4.1-3B with compiler tools, which beats the previous model by 40 points on the same tasks (95% interval 29 to 51). It uses about 2.6 GB of memory and takes about 15 seconds per task, so it's more than we'd like on both.</p>
+      <p>Stock models on 100 held-out shell tasks, through the real gate, with no training. The best setup is Granite 4.1-3B with compiler tools, which beats the previous model by 40 points on the same tasks (95% interval 29 to 51). It uses about 2.6 GB of memory and takes a median of 15 seconds per task, so it misses our size and speed goals. A bake-off under the size cap will replace it.</p>
     </div>
     <div class="tablewrap"><table id="current-table"></table></div>
     <div class="head">
@@ -492,7 +519,7 @@ uv run pytest tests/safety</pre>
 
 <footer>
   <div class="wrap">
-    <p>tth is Apache-2.0. The base model, Qwen2.5-Coder-1.5B-Instruct, is Apache-2.0 from the Qwen team.</p>
+    <p>tth is Apache-2.0. The models keep their own licenses, listed in <a href="https://github.com/eeshwarantharan/tth/blob/main/NOTICE">NOTICE</a>.</p>
     <p>Every number and trace on this page is generated from files in the repository, and a test fails if they drift. <a href="https://github.com/eeshwarantharan/tth/blob/main/scripts/build_site_data.py">See how</a>.</p>
   </div>
 </footer>
