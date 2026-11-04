@@ -16,13 +16,18 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import Any
 
-from tth.inference.openai_compat import OpenAIPolicy
+from tth.core.types import RequestTooLong, ToolDef
+from tth.inference.openai_compat import OpenAIPolicy, to_openai_messages
 
 DEFAULT_PORT = 8791
-CONTEXT_TOKENS = 8192
-UBATCH_TOKENS = 512
-CHECKPOINTS = 8
+# Sized for the 1,000 MB target: evals/diagnostics/results/memory_candidates.jsonl
+CONTEXT_TOKENS = 2048
+UBATCH_TOKENS = 128
+CHECKPOINTS = 0
+REPLY_TOKENS = 256  # room kept free for the model's next reply
+_REMOVED = "[removed to fit the model's memory]"
 IDLE_SECONDS = 600
 START_TIMEOUT = 90.0
 
@@ -31,9 +36,65 @@ class ServerUnavailable(Exception):
     """llama-server is missing or wouldn't start. The message says what to do."""
 
 
+def trim_results(messages: list[dict[str, Any]]) -> list[dict[str, Any]] | None:
+    """One step smaller: remove the oldest tool result, then keep halving the newest. None once nothing can go.
+
+    This only changes what the model reads. The verification gate works from the real results, so it can't be fooled.
+    """
+    results = [i for i, m in enumerate(messages) if m.get("role") == "tool"]
+    for i in results[:-1]:
+        if messages[i]["content"] != _REMOVED:
+            return [*messages[:i], {**messages[i], "content": _REMOVED}, *messages[i + 1 :]]
+    if not results or len(messages[results[-1]]["content"]) <= 200:
+        return None
+    i = results[-1]
+    kept = messages[i]["content"][: len(messages[i]["content"]) // 2]
+    return [*messages[:i], {**messages[i], "content": f"{kept} [cut to fit the model's memory]"}, *messages[i + 1 :]]
+
+
+class LlamaPolicy(OpenAIPolicy):
+    """A local model has a small context, and one large file would overflow it. So the prompt is measured first."""
+
+    def __init__(self, port: int, context: int, **kwargs: Any) -> None:
+        super().__init__(base_url=f"http://127.0.0.1:{port}/v1", **kwargs)
+        self.port = port
+        self.context = context
+
+    def _post(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{self.port}{path}", json.dumps(body).encode(), {"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(request, timeout=10) as r:  # noqa: S310 - fixed local URL
+            return json.load(r)
+
+    def prompt_tokens(self, messages: list[dict[str, Any]], tools: list[ToolDef] | None) -> int:
+        body: dict[str, Any] = {"messages": to_openai_messages(messages)}
+        if tools:
+            body["tools"] = [t.openai() for t in tools]
+        return len(self._post("/tokenize", {"content": self._post("/apply-template", body)["prompt"]})["tokens"])
+
+    def fit(self, messages: list[dict[str, Any]], tools: list[ToolDef] | None) -> list[dict[str, Any]]:
+        room = self.context - REPLY_TOKENS
+        while self.prompt_tokens(messages, tools) > room:
+            smaller = trim_results(messages)
+            if smaller is None:
+                raise RequestTooLong("That request is too long for the local model. Try a shorter one.")
+            messages = smaller
+        return messages
+
+    def complete(self, messages: list[dict[str, Any]], tools: list[ToolDef] | None = None) -> Any:
+        return super().complete(self.fit(messages, tools), tools)
+
+
 def server_args(
-    model: Path, port: int, ctx: int = CONTEXT_TOKENS, ubatch: int = UBATCH_TOKENS, checkpoints: int = CHECKPOINTS
+    model: Path,
+    port: int,
+    ctx: int = CONTEXT_TOKENS,
+    ubatch: int = UBATCH_TOKENS,
+    checkpoints: int = CHECKPOINTS,
+    template: Path | None = None,
 ) -> list[str]:
+    override = ["--chat-template-file", str(template)] if template else []
     return [
         "llama-server",
         "--model", str(model),
@@ -47,6 +108,7 @@ def server_args(
         "--jinja",
         "--no-webui",
         "--sleep-idle-seconds", str(IDLE_SECONDS),
+        *override,
     ]  # fmt: skip
 
 
@@ -67,7 +129,7 @@ def served_model(port: int) -> str | None:
         return None
 
 
-def ensure_server(model: Path, log: Path, port: int = DEFAULT_PORT) -> None:
+def ensure_server(model: Path, log: Path, port: int = DEFAULT_PORT, **settings: Any) -> None:
     """Use the warm server if it has this model. Otherwise start one and wait until the model has loaded."""
     if is_healthy(port):
         running = served_model(port)
@@ -78,7 +140,8 @@ def ensure_server(model: Path, log: Path, port: int = DEFAULT_PORT) -> None:
     if shutil.which("llama-server") is None:
         raise ServerUnavailable("llama-server isn't installed. On macOS: brew install llama.cpp")
     log.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.Popen(server_args(model, port), stdout=log.open("a"), stderr=subprocess.STDOUT, start_new_session=True)
+    args = server_args(model, port, **settings)
+    subprocess.Popen(args, stdout=log.open("a"), stderr=subprocess.STDOUT, start_new_session=True)
     deadline = time.monotonic() + START_TIMEOUT
     while time.monotonic() < deadline:
         if is_healthy(port):
@@ -87,8 +150,8 @@ def ensure_server(model: Path, log: Path, port: int = DEFAULT_PORT) -> None:
     raise ServerUnavailable(f"llama-server didn't become ready within {START_TIMEOUT:.0f}s. See {log}")
 
 
-def llama_policy(port: int = DEFAULT_PORT, grammar: bool = False) -> OpenAIPolicy:
-    return OpenAIPolicy(
-        model="local", base_url=f"http://127.0.0.1:{port}/v1", api_key="local", temperature=0.0, max_tokens=512,
-        thinking=False, limiter=None, tool_choice="required" if grammar else None, attempts=1,
+def llama_policy(port: int = DEFAULT_PORT, grammar: bool = False, context: int = CONTEXT_TOKENS) -> LlamaPolicy:
+    return LlamaPolicy(
+        port, context, model="local", api_key="local", temperature=0.0, max_tokens=512, thinking=False, limiter=None,
+        tool_choice="required" if grammar else None, attempts=1,
     )  # fmt: skip

@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING
 from tth.a2a.client import ExpertClient
 from tth.agent.escalation import ConsentRequest, escalate
 from tth.core.config import Config, ConfigError, find_model, load_config, load_user_env, model_candidates, state_dir
+from tth.core.types import RequestTooLong
 from tth.trace.schema import Call, TraceEvent, TraceLogger, read_trace
 from tth.ui.terminal import Outcome, Style, TerminalRenderer, err, printable
 
@@ -267,7 +268,9 @@ def cmd_setup(args: argparse.Namespace) -> int:
         err("  Download it with:")
         err("    pip install huggingface_hub")
         if config.backend == "llamacpp":
-            err(f"    hf download ibm-granite/granite-4.1-3b-GGUF {target.name} --local-dir '{target.parent}'")
+            err(
+                f"    hf download bartowski/Qwen2.5-Coder-1.5B-Instruct-GGUF {target.name} --local-dir '{target.parent}'"
+            )
         else:
             err(f"    hf download mlx-community/Qwen2.5-Coder-1.5B-Instruct-4bit --local-dir '{target}'")
     if config.backend == "mlx":
@@ -354,6 +357,8 @@ def main(argv: list[str] | None = None) -> int:
         return int(args.fn(args))
     except ConfigError as e:
         ui.problem("Config problem:", str(e))
+    except RequestTooLong as e:
+        ui.problem(str(e))
     except SandboxUnavailable as e:
         ui.problem("The sandbox isn't available:", f"{e}. tth won't probe without it.")
     return 1

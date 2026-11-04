@@ -26,7 +26,6 @@ from tth.trace.schema import TraceLogger
 from tth_gym.core.mcp_env import McpEnvironment
 
 RESULTS = Path("evals/results")
-DEFAULT_GGUF = "granite-4.1-3b-Q4_K_M.gguf"
 SUITE_FILES = {
     "shell": Path("evals/shell/tasks.jsonl"),
     "chess": Path("evals/chess/tasks.jsonl"),
@@ -56,12 +55,15 @@ def _policy(args: argparse.Namespace) -> Any:
         model.eval()
         return HFBatchPolicy(model, tok, temperature=0.0, max_batch=8)
     if args.policy == "llamacpp":
-        from tth.core.config import data_dir, state_dir
+        from tth.core.config import DEFAULT_GGUF, data_dir, state_dir
         from tth.inference.llamacpp import ensure_server, llama_policy
 
         gguf = Path(args.model) if args.model else data_dir() / "models" / DEFAULT_GGUF
-        ensure_server(gguf, state_dir() / "llama-server.log")
-        return llama_policy(grammar=args.grammar)
+        ensure_server(
+            gguf, state_dir() / "llama-server.log", ctx=args.ctx, ubatch=args.ubatch, checkpoints=args.checkpoints,
+            template=Path(args.chat_template) if args.chat_template else None,
+        )  # fmt: skip
+        return llama_policy(grammar=args.grammar, context=args.ctx)
     if args.policy == "nemotron":
         from tth.inference.openai_compat import OpenAIPolicy
 
@@ -141,6 +143,10 @@ def main() -> None:
     ap.add_argument("--model", default=None, help="model path (default: the configured model)")
     ap.add_argument("--policy", default="mlx", choices=["mlx", "llamacpp", "nemotron", "hf", *BASELINES])
     ap.add_argument("--grammar", action="store_true", help="llamacpp: constrain decoding with the tool schemas")
+    ap.add_argument("--ctx", type=int, default=2048, help="llamacpp: context size")
+    ap.add_argument("--ubatch", type=int, default=128, help="llamacpp: physical batch size")
+    ap.add_argument("--checkpoints", type=int, default=0, help="llamacpp: saved context checkpoints")
+    ap.add_argument("--chat-template", default=None, help="llamacpp: use this template, not the one in the GGUF")
     ap.add_argument("--suites", default="shell,chess,redteam")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--budget", type=int, default=6)
@@ -152,7 +158,8 @@ def main() -> None:
     record = manifest.build(
         args.arm, args.label or args.arm, args.policy, args.budget, SUITE_FILES, model=args.model,
         adapter=args.adapter, adapter_sha256=manifest.adapter_hash(args.adapter), grammar=args.grammar,
-        limit=args.limit, suites_run=args.suites,
+        limit=args.limit, suites_run=args.suites, ctx=args.ctx, ubatch=args.ubatch, checkpoints=args.checkpoints,
+        chat_template=args.chat_template and Path(args.chat_template).name,
     )  # fmt: skip
     policy = _policy(args)
     suites = args.suites.split(",")

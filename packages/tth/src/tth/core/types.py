@@ -6,6 +6,10 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 
+class RequestTooLong(Exception):
+    """The request doesn't fit the model's context, even with every tool result removed."""
+
+
 @dataclass
 class ToolDef:
     name: str
