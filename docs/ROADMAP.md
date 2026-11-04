@@ -8,7 +8,7 @@ The reasoning behind this plan is in the [November 2026 audit](analysis/2026-11-
 
 ## Goal
 
-These are targets. None has been met yet.
+These are targets. Size is met: a 1.54B model at 955–957 MB on an M2. Safety is 0 of 20 on the current suite, without independent review. The rest aren't met.
 
 | Area | Done when |
 |---|---|
@@ -37,7 +37,7 @@ These are targets. None has been met yet.
 | Site | Project page on GitHub Pages, updated after every phase | Live |
 | 2 | Restructure into `tth` and `tth-gym` | Done |
 | 3 | MCP and A2A at the core, grammar, llama.cpp, terminal UI | Done |
-| 4 | Gym core, honest baselines, sub-1 GB bake-off, reasoning suite | Next: the sub-1 GB model choice and a reasoning suite remain |
+| 4 | Gym core, honest baselines, sub-1 GB bake-off, reasoning suite | Next: the model is chosen. A real-task suite and a reasoning suite remain |
 | 5 | Reasoning transfer: teacher rationales, real chess play, preregistered test | Planned |
 | 6 | Release | Planned |
 
@@ -47,16 +47,16 @@ Each change is one rung, scored against the rung below it on the same held-out t
 
 | Rung | Change | Result (100 held-out shell tasks unless noted) |
 |---|---|---|
-| L0 | Stock model (one per bake-off candidate) | Measured. Random baseline 5, current model 25, Qwen3-1.7B 26, Granite 4.1-3B 43 |
-| L1 | + grammar generated from MCP tool schemas | **Off by default.** 7/20 either way, at 10 times the time |
+| L0 | Stock model (one per bake-off candidate) | Measured. Random baseline 5, official Coder Q4 25, Qwen3-1.7B 26, Granite 4.1-3B 43 (all over the cap) |
+| L1 | + grammar generated from MCP tool schemas | **Off by default, needs a rerun.** 7/20 either way at 10 times the time, but llama-server didn't enforce the tool schemas when rechecked on the default build |
 | L2 | + verify, then commit, by construction | **Kept.** Runs out of attempts fell from 15–16 of 20 to 0–5 for trained adapters |
 | L3 | + compact prompt and structured observations | Not run |
-| L4 | + compiler tools (the model fills slots, tools write the command) | **Kept for Granite**, with prose reading: 43 → 58. Measured together, so not separated. The previous model went from 25 to 18 (paired interval −17 to +3) |
+| L4 | + compiler tools (the model fills slots, tools write the command) | **Kept for Granite**, with prose reading: 43 → 58. Measured together, so not separated. The official Coder file went from 25 to 18 (paired interval −17 to +3). Not measured without tools on the default build |
 | L5 | + retrieved lessons (few-shot) | Not run |
 | L6 | + SFT from oracle and teacher demos | Not run |
 | L7 | + DAgger rounds | Not run |
 | L8 | + RL (GRPO) | Not run |
-| Q | Quantization matrix on the winner | Not run |
+| Q | Quantization matrix on the winner | **Started.** bartowski's Coder IQ3_XS scored 40 and Q4 scored 33, against 17 for the official Q4 ([why that's unexplained](../evals/diagnostics/results/coder_builds/README.md)). Quantization calibrated on gym traces not run |
 
 **Stop rule.** If the best student can't beat the best stock model under the size cap after at least 5k verified rows, training investment stops. tth then ships that stock model with the safety layer, and the gym stays as an open benchmark.
 
@@ -66,6 +66,7 @@ Training so far has only copied tool calls: [4 of 376 shell teacher turns contai
 
 - **Capture reasoning.** Keep the teacher's thinking, compress it to about 40 tokens per turn (goal, evidence, next step), sample many per task, and keep only what verifiers approve.
 - **Play real chess.** The student plays with a short rationale for each move. At a blunder, the teacher explains why and gives a better move, and Stockfish scores it.
+- **Test on real work first.** About 50 real requests from terminal history and other developers form a held-out suite that played no part in choosing the model. The synthetic suite picked the default, so its 40 is somewhat optimistic. This comes before GPU training.
 - **Test on tasks that need reasoning.** A new held-out suite covers error recovery, wrong assumptions about formats, multi-step deduction, ambiguity and knowing its limits. Tasks must be unsolvable without looking: hidden values are randomized per seed, so a blind guess fails.
 - **Compare fairly.** Every arm gets the same training steps and tokens, with at least 3 seeds:
 
@@ -96,7 +97,7 @@ They don't make the model smarter on their own, and they aren't the security bou
 
 **Phase 3: Protocols, inference, observability.** A real MCP client in the agent. Escalation on the A2A task lifecycle with a reference expert. Grammar from schemas. llama.cpp backend, warm local server, event stream, terminal UI, raw traces and replay. Published latency, including protocol overhead.
 
-**Phase 4: Gym core and baselines.** Envs as MCP servers. One session for product and evals, so evals measure what ships. Reward fixes checked with golden policies. Stricter scoring. A bake-off under the size cap picks the model, with a compact prompt and a tuned server. The reasoning suite gets built and frozen before any training.
+**Phase 4: Gym core and baselines.** Envs as MCP servers. One session for product and evals, so evals measure what ships. Reward fixes checked with golden policies. Stricter scoring. A bake-off under the size cap picked the model and tuned the server. A compact prompt, a real-task suite and a reasoning suite get built and frozen before any training.
 
 **Phase 5: Reasoning transfer.** Rationale capture, chess teacher and takeover over A2A, SFT with preflight gates, DAgger, RL, then the preregistered test above. Quantization calibrated on gym traces follows, tested on the final build under the cap.
 

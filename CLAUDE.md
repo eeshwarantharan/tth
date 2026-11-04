@@ -66,7 +66,7 @@ Layers and one-way dependencies are enforced by `uv run lint-imports`.
 - `python-chess` + Stockfish (training verifiers; never used as a judge model)
 - Official MCP Python SDK (`mcp`) and the official A2A Python SDK
 - Training: TRL (SFT, GRPO) + PEFT/LoRA; vLLM for rollouts when available
-- Default model today: Granite 4.1-3B (Apache-2.0), which misses the size goal. A sub-1 GB bake-off replaces it, and it can then serve as a local expert. Keep license notices in all releases.
+- Default model: Qwen2.5-Coder-1.5B IQ3_XS (Apache-2.0, bartowski's GGUF), chosen by the sub-1 GB bake-off. The official Qwen GGUF scored far lower at the same label, so never swap files without re-running the evals. Granite 4.1-3B is the candidate local expert. Keep license notices in all releases.
 - Inference: llama.cpp (GGUF) and MLX
 
 ## Commands

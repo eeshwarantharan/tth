@@ -49,4 +49,4 @@ families). `tth_gym` never imports `evals/`.
 - Synthetic fixtures: real repositories are messier than the generated projects.
 - Shell commands were verified on macOS (BSD userland); some may behave differently with GNU tools.
 - Two teachers with different strengths were mixed in the shell set.
-- Check NVIDIA's API terms before redistributing the trajectories.
+- The project owner states that NVIDIA allows training on these outputs. That hasn't been independently checked against NVIDIA's API terms, so confirm it before redistributing the trajectories.

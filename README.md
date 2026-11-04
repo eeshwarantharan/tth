@@ -15,7 +15,7 @@
 </div>
 
 > [!WARNING]
-> **tth is an early research preview, and not ready for daily use.** The model is wrong about four times in ten on our test tasks, and the safety layer hasn't been independently reviewed. Always read a staged command before pressing Enter. The [audit](docs/analysis/2026-11-audit.md) has the details.
+> **tth is an early research preview, and not ready for daily use.** The model is wrong about six times in ten on our test tasks, and the safety layer hasn't been independently reviewed. Always read a staged command before pressing Enter. The [audit](docs/analysis/2026-11-audit.md) has the details.
 
 ## What it does
 
@@ -41,16 +41,14 @@ tth is a terminal agent that runs on a ~1.5B model in under 1 GB of RAM. It insp
 
 **The research question:** can a large model's verified reasoning make a small model better at terminal tasks that need reasoning, and does chess practice add anything? So far, training has only copied tool calls, so [this hasn't been tested](evals/diagnostics/results/reasoning_in_data.json).
 
-These are targets, and **none of them has been met yet**:
-
-| Area | Done when |
-|---|---|
-| Size | A ~1.5B model stays under 1,000 MB, counting weights, working memory and the CLI process |
-| Speed | Under 3s for easy tasks, under 10s for hard ones |
-| Safety | 0 unsafe commands staged on the red-team suite, and tth never runs the final command |
-| Reasoning transfer | Reasoning-trained beats actions-only on a held-out reasoning suite, across 3+ seeds, with a confidence interval that excludes zero |
-| Chess | Chess practice beats a non-chess control and more shell training. Published either way |
-| Public proof | Published scores on NL2SH-ALFA plus our own reasoning suite |
+| Area | Done when | Now |
+|---|---|---|
+| Size | A ~1.5B model stays under 1,000 MB, counting weights, working memory and the CLI process | **Met:** 1.54B model, [955–957 MB](evals/diagnostics/results/memory_default.jsonl) on an M2 |
+| Speed | Under 3s for easy tasks, under 10s for hard ones | Not yet: median 4.8s, 90th percentile 9.5s |
+| Safety | 0 unsafe commands staged on the red-team suite, and tth never runs the final command | 0 of 20 on the current suite. Not independently reviewed |
+| Reasoning transfer | Reasoning-trained beats actions-only on a held-out reasoning suite, across 3+ seeds, with a confidence interval that excludes zero | Not tested |
+| Chess | Chess practice beats a non-chess control and more shell training. Published either way | Not tested |
+| Public proof | Published scores on NL2SH-ALFA plus our own reasoning suite | Not started |
 
 Out of scope: general coding, training on your device, firewalling other agents, and agent swarms.
 
@@ -72,17 +70,21 @@ Out of scope: general coding, training on your device, firewalling other agents,
 
 ## Results so far
 
-**The headline: a stock model scores 58 of 100 on held-out shell tasks with no training, and nothing we've trained has beaten a stock model yet.**
+**The headline: the default, a 1.54B model in 956 MB, scores 40 of 100 on held-out shell tasks with no training. A larger 3B model scores 58 but needs about 2.6 GB. Nothing we've trained has beaten a stock model yet.**
 
 | Setup, on 100 held-out shell tasks | Correct (95% CI) | Unsafe, of 20 |
 |---|---|---|
-| **Granite 4.1-3B + compiler tools (default)** | **58** (48–67) | 0 |
-| Granite 4.1-3B, stock | 43 (33–52) | 0 |
+| **Coder 1.5B IQ3_XS + compiler tools (default, 956 MB)** | **40** (30–50) | 0 |
+| Granite 4.0-H-1B Q3_K_M + compiler tools (996 MB) | 29 (20–38) | 0 |
+| Official Coder 1.5B Q2_K + compiler tools (956 MB) | 19 (12–27) | 0 |
+| Granite 4.1-3B + compiler tools (about 2.6 GB, over the cap) | 58 (48–67) | 0 |
+| Granite 4.1-3B, stock (over the cap) | 43 (33–52) | 0 |
 | Qwen3-1.7B, stock | 26 (17–34) | 0 on final code |
-| Qwen2.5-Coder-1.5B, stock | 25 (17–34) | 0 |
+| Official Coder 1.5B Q4, stock (over the cap) | 25 (17–34) | 0 |
 | Random baseline | 5 (1–10) | 0 |
 
-- The default costs about 2.6 GB of memory and a median of 15 seconds per task, so it **misses the size and speed goals**. A sub-1 GB bake-off will replace it.
+- **Two files with the same model and label aren't equal.** bartowski's Coder Q4 scored 33 and the official Qwen Q4 scored 17, on the same tasks and settings. [The cause inside the file isn't known yet](evals/diagnostics/results/coder_builds/README.md).
+- This suite also picked the default, so 40 is somewhat optimistic.
 - These tasks are synthetic, and their families overlap with training templates, so expect lower numbers on real work.
 - The first training run scored 0/100 because training never taught the model its tool-call tag. Fine-tuning hasn't had a fair test yet: it had 90 examples and 12 steps.
 
@@ -90,15 +92,15 @@ Sources: [current results](evals/results/RESULTS.md) · [full audit](docs/analys
 
 ## Quickstart
 
-On macOS or Linux, with `uv`. It uses a stock model that's right a bit over half the time on our test tasks, so read every command before you run it.
+On macOS or Linux, with `uv`. It uses a stock model that's right about four times in ten on our test tasks, so read every command before you run it.
 
 ```bash
 git clone https://github.com/eeshwarantharan/tth.git && cd tth
 uv sync
 brew install llama.cpp   # or build llama-server another way, and put it on your PATH
 
-# Download the model (2.1 GB on disk, about 2.6 GB of memory)
-uv run hf download ibm-granite/granite-4.1-3b-GGUF granite-4.1-3b-Q4_K_M.gguf --local-dir ~/.local/share/tth/models
+# Download the model (0.73 GB on disk, about 956 MB of memory with the CLI)
+uv run hf download bartowski/Qwen2.5-Coder-1.5B-Instruct-GGUF Qwen2.5-Coder-1.5B-Instruct-IQ3_XS.gguf --local-dir ~/.local/share/tth/models
 
 uv run tth setup   # checks the sandbox, model and backend
 
@@ -108,7 +110,7 @@ echo 'eval "$(tth init zsh)"' >> ~/.zshrc && exec zsh
 
 Then use `t <request>`, or type a request and press Ctrl-G.
 
-On Linux, also install `bubblewrap`, and use `tth init bash`. For less memory, set `backend = "mlx"` in `~/.config/tth/config.toml` and use the smaller Qwen2.5-Coder model, which scores about 25.
+On Linux, also install `bubblewrap`, and use `tth init bash`.
 
 To try escalation, copy [`.env.example`](.env.example) to `~/.config/tth/.env` and add a key, or point `expert_base_url` at any OpenAI-compatible model. tth never reads a project's own `.env`.
 

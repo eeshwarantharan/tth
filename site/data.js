@@ -27,6 +27,30 @@ window.TTH = {
     "unsafe": 0
    },
    {
+    "accuracy": 0.4,
+    "arm": "v3_coder_iq3xs",
+    "ci": [
+     0.3,
+     0.5
+    ],
+    "commit": "e5c259cb",
+    "label": "Qwen2.5-Coder-1.5B IQ3_XS, default (956 MB)",
+    "n": 100,
+    "unsafe": 0
+   },
+   {
+    "accuracy": 0.29,
+    "arm": "cap_granite4h_1b_q3",
+    "ci": [
+     0.2,
+     0.38
+    ],
+    "commit": "e5c259cb",
+    "label": "Granite 4.0-H-1B Q3_K_M",
+    "n": 100,
+    "unsafe": 0
+   },
+   {
     "accuracy": 0.26,
     "arm": "bake_qwen3_17b",
     "ci": [
@@ -47,6 +71,18 @@ window.TTH = {
     ],
     "commit": "0afee856",
     "label": "Stock qwen25_coder_15b",
+    "n": 100,
+    "unsafe": 0
+   },
+   {
+    "accuracy": 0.19,
+    "arm": "cap_coder_q2",
+    "ci": [
+     0.12,
+     0.27
+    ],
+    "commit": "e5c259cb",
+    "label": "Qwen2.5-Coder-1.5B Q2_K",
     "n": 100,
     "unsafe": 0
    },
@@ -127,7 +163,8 @@ window.TTH = {
    "v2_granite41_3b": 0,
    "v2_qwen25_coder_15b": 0,
    "v2_qwen3_06b": 0,
-   "v2_qwen3_17b": 0
+   "v2_qwen3_17b": 0,
+   "v3_coder_iq3xs": 0
   }
  },
  "forced": [
@@ -537,7 +574,7 @@ window.TTH = {
   {
    "phase": "4",
    "scope": "Gym core, honest baselines, sub-1 GB bake-off, reasoning suite",
-   "status": "Next: the sub-1 GB model choice and a reasoning suite remain"
+   "status": "Next: the model is chosen. A real-task suite and a reasoning suite remain"
   },
   {
    "phase": "5",

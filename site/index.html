@@ -269,7 +269,7 @@ footer .wrap { display: grid; gap: 0.5rem; }
       <span class="status">Early research preview, not ready for daily use</span>
       <h1>A small model that looks before it acts.</h1>
       <p class="lede">tth turns plain English into a shell command. It checks your real files in a read-only sandbox, then puts the command on your prompt. You decide whether to run it.</p>
-      <p>We're building it to run on a ~1.5B model in under 1 GB of RAM, and we aren't there yet. An open RL gym, where only software verifiers hand out rewards, tests every change to it.</p>
+      <p>It runs on a 1.54B model in under 1 GB of RAM, and it's right about four times in ten on our test tasks. An open RL gym, where only software verifiers hand out rewards, tests every change to it.</p>
       <div class="actions">
         <a class="button primary" href="https://github.com/eeshwarantharan/tth">View on GitHub</a>
         <a class="button" href="#findings">See what we've found</a>
@@ -309,14 +309,14 @@ footer .wrap { display: grid; gap: 0.5rem; }
     </div>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Target, none met yet</th><th>Done when</th></tr></thead>
+        <thead><tr><th>Target</th><th>Done when</th><th>Now</th></tr></thead>
         <tbody>
-          <tr><td><b>Size</b></td><td>A ~1.5B model stays under 1,000 MB, counting weights, working memory and the CLI process</td></tr>
-          <tr><td><b>Speed</b></td><td>Under 3s for easy tasks, under 10s for hard ones</td></tr>
-          <tr><td><b>Safety</b></td><td>0 unsafe commands staged on the red-team suite, and tth never runs the final command</td></tr>
-          <tr><td><b>Reasoning transfer</b></td><td>Reasoning-trained beats actions-only on a held-out reasoning suite, across 3+ seeds, with a confidence interval that excludes zero</td></tr>
-          <tr><td><b>Chess</b></td><td>Chess practice beats a non-chess control and more shell training. Published either way</td></tr>
-          <tr><td><b>Public proof</b></td><td>Published scores on NL2SH-ALFA plus our own reasoning suite</td></tr>
+          <tr><td><b>Size</b></td><td>A ~1.5B model stays under 1,000 MB, counting weights, working memory and the CLI process</td><td><b>Met:</b> 955–957 MB on an M2</td></tr>
+          <tr><td><b>Speed</b></td><td>Under 3s for easy tasks, under 10s for hard ones</td><td>Not yet: median 4.8s</td></tr>
+          <tr><td><b>Safety</b></td><td>0 unsafe commands staged on the red-team suite, and tth never runs the final command</td><td>0 of 20 so far, no outside review</td></tr>
+          <tr><td><b>Reasoning transfer</b></td><td>Reasoning-trained beats actions-only on a held-out reasoning suite, across 3+ seeds, with a confidence interval that excludes zero</td><td>Not tested</td></tr>
+          <tr><td><b>Chess</b></td><td>Chess practice beats a non-chess control and more shell training. Published either way</td><td>Not tested</td></tr>
+          <tr><td><b>Public proof</b></td><td>Published scores on NL2SH-ALFA plus our own reasoning suite</td><td>Not started</td></tr>
         </tbody>
       </table>
     </div>
@@ -353,7 +353,7 @@ footer .wrap { display: grid; gap: 0.5rem; }
       <div class="head">
         <h3>What's built on MCP</h3>
         <ul class="points">
-          <li><b>Schema to grammar</b><span>Available, and off by default. We measured it: same accuracy, ten times slower.</span></li>
+          <li><b>Schema to grammar</b><span>Available, and off by default. It was ten times slower for the same accuracy, but llama-server didn't enforce the schemas when we rechecked, so it needs a rerun.</span></li>
           <li><b>Verify, then commit</b><span>Built. Staging tests the command first, and repeating a passing test commits it. The looping we measured is mostly gone.</span></li>
           <li><b>Compiler tools</b><span>Built. The model fills in <code>aggregate(file, op, column, where)</code>, and the tool writes and tests the <code>awk</code> or <code>jq</code>.</span></li>
           <li><b>Domain packs</b><span>New capability arrives as a server with its own gym tasks, with no change to the core.</span></li>
@@ -413,7 +413,7 @@ footer .wrap { display: grid; gap: 0.5rem; }
           <thead><tr><th>Step</th><th>Change</th><th>Result</th></tr></thead>
           <tbody>
             <tr><td class="mono">L0</td><td>Stock model, one per candidate</td><td class="ladder-status">measured</td></tr>
-            <tr><td class="mono">L1</td><td>Grammar from MCP schemas</td><td class="ladder-status">off by default: same accuracy, 10× slower</td></tr>
+            <tr><td class="mono">L1</td><td>Grammar from MCP schemas</td><td class="ladder-status">off by default, needs a rerun</td></tr>
             <tr><td class="mono">L2</td><td>Verify, then commit, by construction</td><td class="ladder-status">kept: looping mostly gone</td></tr>
             <tr><td class="mono">L3</td><td>Compact prompt, structured observations</td><td class="ladder-status">not run</td></tr>
             <tr><td class="mono">L4</td><td>Compiler tools</td><td class="ladder-status">kept, with L5 prose reading: Granite 43 → 58</td></tr>
@@ -438,7 +438,7 @@ footer .wrap { display: grid; gap: 0.5rem; }
     </div>
     <div class="head">
       <h3>Where it stands now</h3>
-      <p>Stock models on 100 held-out shell tasks, through the real gate, with no training. The best setup is Granite 4.1-3B with compiler tools, which beats the previous model by 40 points on the same tasks (95% interval 29 to 51). It uses about 2.6 GB of memory and takes a median of 15 seconds per task, so it misses our size and speed goals. A bake-off under the size cap will replace it.</p>
+      <p>Stock models on 100 held-out shell tasks, through the real gate, with no training. The default is a 1.54B model that scores 40 in 956 MB, with a median of 4.8 seconds per task. Granite 4.1-3B scores 58 but needs about 2.6 GB and 15 seconds, so it's over our cap. This suite also picked the default, so 40 is somewhat optimistic.</p>
     </div>
     <div class="tablewrap"><table id="current-table"></table></div>
     <div class="head">
@@ -465,6 +465,7 @@ footer .wrap { display: grid; gap: 0.5rem; }
       </ul>
       <ul class="points">
         <li><b>The recorded baseline can't be trusted.</b><span>On these same 20 tasks the recorded base scored 0/20, and this run scored 7/20. The two differ in code version, backend and tools, so every number gets rerun.</span></li>
+        <li><b>Two files, same model, same label, different scores.</b><span>bartowski's Coder Q4 scored 33 and the official Qwen Q4 scored 17, on the same tasks and settings. <a href="https://github.com/eeshwarantharan/tth/blob/main/evals/diagnostics/results/coder_builds/README.md">We don't know why yet</a>. So never swap a model file without re-running the evals.</span></li>
         <li><b>Inference is the slow part.</b><span>Episodes took 4.7 to 14.6 seconds with the model already loaded. So we deferred a Rust rewrite, which wouldn't speed that up. Fewer turns and shorter prompts will.</span></li>
         <li><b>Only 90 examples, for 12 training steps.</b><span>That's far too little to judge fine-tuning. It's why the ladder exists.</span></li>
       </ul>
@@ -501,7 +502,7 @@ footer .wrap { display: grid; gap: 0.5rem; }
     <div class="two">
       <div class="head">
         <h3>Try it</h3>
-        <p>With a stock model that's right a bit over half the time on our test tasks, so expect mistakes. Always read a command before you run it.</p>
+        <p>With a stock model that's right about four times in ten on our test tasks, so expect mistakes. Always read a command before you run it.</p>
         <p><a href="https://github.com/eeshwarantharan/tth#quickstart">Full quickstart</a> · <a href="https://github.com/eeshwarantharan/tth/blob/main/CONTRIBUTING.md">Contributing guide</a> · <a href="https://github.com/eeshwarantharan/tth/blob/main/SECURITY.md">Security policy</a></p>
       </div>
       <pre class="code"><span class="c"># get the code and check your setup</span>
