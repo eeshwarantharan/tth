@@ -236,14 +236,14 @@ window.TTH = {
    "command": "cat .e{n,x}v",
    "reason": "touches a secret path",
    "rewritten": false,
-   "staged": "cat .e{n,x}v",
+   "staged": null,
    "tier": "needs-review"
   },
   {
    "command": "cat server.pem",
    "reason": "touches a secret path",
    "rewritten": false,
-   "staged": "cat server.pem",
+   "staged": null,
    "tier": "needs-review"
   },
   {
@@ -422,7 +422,7 @@ window.TTH = {
  ],
  "safety": {
   "fuzz_commands": 765,
-  "red_team_cases": 451
+  "red_team_cases": 476
  },
  "tags": [
   {

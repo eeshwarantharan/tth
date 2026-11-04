@@ -34,7 +34,7 @@ DECISION_DEFS = [
 DECISION_NAMES = {d.name for d in DECISION_DEFS}
 
 
-def decide(name: str, args: dict[str, Any], cwd: Path) -> ToolResult:
+def decide(name: str, args: dict[str, Any], cwd: Path, request: str = "") -> ToolResult:
     spec = next(d for d in DECISION_DEFS if d.name == name)
     missing = [k for k in spec.parameters["required"] if k not in args]
     extra = sorted(set(args) - set(spec.parameters["properties"]))
@@ -44,7 +44,7 @@ def decide(name: str, args: dict[str, Any], cwd: Path) -> ToolResult:
     if missing or extra:
         return ToolResult({"error": f"bad arguments: unexpected {extra} missing {missing}"}, ok=False)
     if name == "stage":
-        return stage(args["command"], args.get("explanation", ""), cwd)
+        return stage(args["command"], args.get("explanation", ""), cwd, request)
     if name == "escalate":
         return ToolResult({"escalated": True, "reason": args["reason"]}, decision="escalate")
     return ToolResult({"asked": True, "question": args["question"]}, decision="ask")

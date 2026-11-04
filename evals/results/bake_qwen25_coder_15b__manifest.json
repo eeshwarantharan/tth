@@ -15,7 +15,7 @@
  "tth": "0.1.0",
  "mlx_lm": "0.32.2",
  "started": "2026-11-03T23:12:50",
- "model": "/Users/tharaneeshwaran/.local/share/tth/models/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf",
+ "model": "~/.local/share/tth/models/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf",
  "adapter": null,
  "adapter_sha256": null,
  "grammar": false,

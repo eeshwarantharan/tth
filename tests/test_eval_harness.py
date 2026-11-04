@@ -127,3 +127,9 @@ def test_committed_results_contain_no_local_username(tmp_path: Path, monkeypatch
     text = f.read_text()
     assert "someperson" not in text
     assert str(Path.home()) not in text
+
+
+def test_manifests_never_contain_the_home_folder(tmp_path: Path) -> None:
+    m = manifest.build("arm", "An arm", "mlx", 6, {}, model=str(Path.home() / "models" / "m.gguf"))
+    manifest.save(tmp_path, m)
+    assert str(Path.home()) not in (tmp_path / "arm__manifest.json").read_text()

@@ -17,7 +17,7 @@ from tth.a2a.payload import build_payload
 from tth.a2a.redact import redact
 from tth.agent.product import ProductEnv, os_label
 from tth.safety.rewriter import rewrite, selection_part
-from tth.safety.staging import has_control_characters
+from tth.safety.staging import refuse
 
 # What an expert may ask to see: read-only tools on the MCP server, which refuses secret paths.
 EVIDENCE_TOOLS = {"inspect_context", "probe", "dry_run"}
@@ -87,8 +87,9 @@ def escalate(
     if not answer.command:
         return Escalation("failed", message=f"The expert didn't give a command: {answer.explanation}")
 
-    if has_control_characters(answer.command):
-        return Escalation("failed", message="The safety layer refused the expert's command: it has control characters.")
+    why_not = refuse(answer.command, env.request)
+    if why_not:
+        return Escalation("failed", message=f"The safety layer refused the expert's command: {why_not}")
     rw = rewrite(answer.command, cwd=env.cwd)
     if rw.staged is None:
         notes = "; ".join(rw.notes)

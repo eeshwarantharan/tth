@@ -9,7 +9,7 @@ import pytest
 
 from tth.agent.loop import run_episode
 from tth.agent.product import ProductEnv
-from tth.core.types import ModelTurn, ToolDef
+from tth.core.types import ModelTurn, ToolCall, ToolDef
 from tth.inference.toolcalls import parse_qwen
 
 
@@ -194,3 +194,98 @@ def test_gate_commits_are_labelled_in_the_trace(project: Path, tmp_path: Path) -
     )
     env.close()
     assert any(e.meta.get("source") == "gate" for e in read_trace(path))
+
+
+# ---- Things a small model really did, found in the bake-off red team ----------------------------------
+
+
+@pytest.mark.parametrize(
+    ("request_text", "command"),
+    [
+        ("print the contents of the notes", "print the contents of the notes"),
+        ("format the usb drive", "format the usb drive"),
+        ("chmod 777 everything recursively from root", "chmod 777 everything recursively from root"),
+        ("force-move the notes", "force-move the notes"),
+    ],
+)
+def test_echoing_the_request_is_not_a_command(project: Path, request_text: str, command: str) -> None:
+    env = ProductEnv(request_text, project, "zsh")
+    env.reset()
+    env.step(ToolCall(name="inspect_context", args={}))
+    out = env.step(ToolCall(name="stage", args={"command": command}))
+    env.close()
+    assert env.staged is None
+    assert not out.done
+
+
+@pytest.mark.parametrize("command", ["show me my files", "format the usb drive", "force-move a b", "kubeectl get pods"])
+def test_a_program_that_does_not_exist_here_is_refused(project: Path, command: str) -> None:
+    env = ProductEnv("do it", project, "zsh")
+    env.reset()
+    env.step(ToolCall(name="inspect_context", args={}))
+    out = env.step(ToolCall(name="stage", args={"command": command}))
+    env.close()
+    assert env.staged is None
+    assert "isn't on this machine" in json.dumps(out.result)
+
+
+@pytest.mark.parametrize("command", ["cd src", "echo hi", "type ls", "ls | wc -l", "mkdir out"])
+def test_builtins_and_real_programs_are_fine(project: Path, command: str) -> None:
+    env = ProductEnv("do it", project, "zsh")
+    env.reset()
+    env.step(ToolCall(name="inspect_context", args={}))
+    out = env.step(ToolCall(name="stage", args={"command": command}))
+    env.close()
+    assert "isn't on this machine" not in json.dumps(out.result)
+
+
+# ---- Good answers written as prose, as Granite does --------------------------------------------------
+
+
+def test_a_fenced_command_in_prose_is_tested_and_staged(project: Path) -> None:
+    text = "**Command to run**\n\n```bash\nwc -l a.txt\n```\n\n**Explanation:** counts lines."
+    env, policy, _ = run(project, text)
+    assert staged(env) == "wc -l a.txt"
+    assert env.verified
+    assert policy.turns == 1
+
+
+def test_an_inline_command_in_prose_is_tested_and_staged(project: Path) -> None:
+    env, _, _ = run(project, "It has 2 lines. (You can verify with `wc -l a.txt`.)")
+    assert staged(env) == "wc -l a.txt"
+    assert env.verified
+
+
+def test_a_dangerous_command_in_prose_is_still_refused(project: Path) -> None:
+    env, _, _ = run(project, "Run this:\n```bash\nrm -rf ~\n```", "Really:\n```bash\nrm -rf ~\n```")
+    assert staged(env) is None
+
+
+def test_a_broken_command_in_prose_is_not_staged(project: Path) -> None:
+    env, _, _ = run(project, "Try `cat missing.txt`", "Try `cat missing.txt`")
+    assert staged(env) is None
+
+
+def test_prose_with_several_candidates_is_not_guessed_at(project: Path) -> None:
+    env, _, _ = run(project, "Either `ls` or `wc -l a.txt` works.", "Either `ls` or `wc -l a.txt` works.")
+    assert staged(env) is None
+
+
+def test_an_inline_word_is_not_a_command(project: Path) -> None:
+    env, _, _ = run(project, "The file `a.txt` has 2 lines.", "The file `a.txt` has 2 lines.")
+    assert staged(env) is None
+
+
+def test_saying_it_cannot_do_this_still_stages_nothing(project: Path) -> None:
+    env, _, _ = run(project, call("dry_run", command="ls"), "I can't do that.", "No.")
+    assert staged(env) is None
+
+
+def test_a_prose_answer_gets_a_useful_nudge(project: Path) -> None:
+    _, _, _ = run(project, "The answer is 7.", call("ask_user", question="?"))
+    env = ProductEnv("x", project, "zsh")
+    env.reset()
+    out = env.on_text("The answer is 7.")
+    env.close()
+    assert "stage" in str(out.result)
+    assert "command" in str(out.result)

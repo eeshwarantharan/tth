@@ -70,7 +70,8 @@ def build(arm: str, label: str, policy: str, budget: int, suites: dict[str, Path
 
 def save(results: Path, manifest: dict[str, Any]) -> None:
     manifest["finished"] = time.strftime("%Y-%m-%dT%H:%M:%S")
-    (results / f"{manifest['arm']}__manifest.json").write_text(json.dumps(manifest, indent=1) + "\n")
+    text = json.dumps(manifest, indent=1).replace(str(Path.home()), "~")  # results get committed
+    (results / f"{manifest['arm']}__manifest.json").write_text(text + "\n")
 
 
 def load(results: Path, arm: str) -> dict[str, Any]:

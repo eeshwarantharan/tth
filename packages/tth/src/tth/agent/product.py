@@ -12,16 +12,37 @@ The gate holds the rules that make "look before you act" structural, so the mode
 from __future__ import annotations
 
 import platform
+import re
 from pathlib import Path
 
 from tth.agent.decisions import DECISION_DEFS, DECISION_NAMES, decide
 from tth.agent.prompts import SHELL_SYSTEM
 from tth.core.types import EpisodeStart, StepOutcome, ToolCall, ToolResult
 from tth.mcp.client import ToolSession, connect
-from tth.safety.rewriter import selection_part
+from tth.safety.rewriter import rewrite, selection_part
+from tth.safety.staging import refuse
 
 PROBES = {"inspect_context", "probe", "dry_run"}
 OBSERVATIONS = {"inspect_context", "probe"}
+
+
+_FENCED = re.compile(r"```(?:\w+)?\n(.*?)```", re.S)
+_INLINE = re.compile(r"`([^`\n]+)`")
+
+
+def command_in_prose(text: str) -> str | None:
+    """The one command in a prose reply, if there's exactly one. Otherwise we'd be guessing."""
+    fenced = [b.strip() for b in _FENCED.findall(text) if b.strip()]
+    if fenced:
+        return fenced[0] if len(fenced) == 1 and "\n" not in fenced[0] else None
+    inline = [c.strip() for c in _INLINE.findall(_FENCED.sub("", text))]
+    commands = [c for c in inline if " " in c]  # a lone word is usually a file or value being named
+    return commands[0] if len(commands) == 1 and len(inline) == 1 else None
+
+
+def _refused_by_safety(command: str, cwd: Path) -> str | None:
+    rw = rewrite(command, cwd=cwd)
+    return None if rw.staged is not None else "; ".join(rw.notes)
 
 
 def os_label() -> str:
@@ -86,7 +107,7 @@ class ProductEnv:
         if call.name == "stage":
             return self._stage(call.args)
         if call.name in DECISION_NAMES:
-            r = decide(call.name, call.args, self.cwd)
+            r = decide(call.name, call.args, self.cwd, self.request)
             if r.decision:
                 self.decision = r.decision
                 self.reason = str(call.args.get("reason") or call.args.get("question") or "")
@@ -129,6 +150,10 @@ class ProductEnv:
         if not isinstance(command, str) or not command.strip():
             return StepOutcome({"error": "bad arguments: stage needs a command"}, ok=False)
         norm = _norm(command)
+        why_not = refuse(command, self.request) or _refused_by_safety(command, self.cwd)
+        if why_not:
+            return StepOutcome({"staged": False, "notes": [why_not], "hint": "write a real shell command, ask the user, or escalate"},
+                               ok=False)  # fmt: skip
         if selection_part(command) is None:
             # dry_run can't run this, so the evidence is whatever the model looked at first.
             if not self._looked:
@@ -153,7 +178,7 @@ class ProductEnv:
                            ok=False)  # fmt: skip
 
     def _commit(self, command: str, verified: bool, explanation: str = "", source: str = "model") -> StepOutcome:
-        r = decide("stage", {"command": command, "explanation": explanation}, self.cwd)
+        r = decide("stage", {"command": command, "explanation": explanation}, self.cwd, self.request)
         if r.decision != "stage":
             return StepOutcome(r.data, ok=False, source=source)
         self.decision = "stage"
@@ -166,7 +191,21 @@ class ProductEnv:
 
     def on_text(self, text: str) -> StepOutcome:
         self._said_no = bool(text.strip())
-        return StepOutcome("Reply with exactly one tool call (stage, escalate or ask_user to finish).", ok=False)
+        candidate = command_in_prose(text)
+        if candidate:
+            # Some models answer in prose with a good command in it. It gets the same test as any other.
+            self._said_no = False
+            self._looked = True
+            out = self._stage({"command": candidate})
+            if out.done:
+                out.source = "gate"
+                return out
+            return StepOutcome(out.result, ok=False)
+        return StepOutcome(
+            "Don't answer in words. Give the shell command that answers this by calling stage with it, or call "
+            "escalate or ask_user.",
+            ok=False,
+        )
 
     def finish(self, reason: str) -> StepOutcome:
         # Out of attempts with a tested command: offer it, since it's only placed on the prompt. Not if the model's

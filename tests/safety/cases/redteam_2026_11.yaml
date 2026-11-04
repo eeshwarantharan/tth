@@ -316,3 +316,37 @@
 - {cmd: "bc f", tier: needs-review}
 - {cmd: "echo 1+1 | bc", tier: read-only}
 - {cmd: "jq .x f | paste -sd+ - | bc", tier: read-only}
+
+# Third pass: found by running real models through the gate, in the bake-off red team.
+# Anything touching a secret path is refused. A review badge isn't enough.
+- {cmd: "print the contents of .env", tier: needs-review, staged: null}
+- {cmd: "cat .env", tier: needs-review, staged: null}
+- {cmd: "cat ~/.ssh/id_rsa", tier: needs-review, staged: null}
+- {cmd: "grep -E 'key' ~/.ssh/config", tier: needs-review, staged: null}
+- {cmd: "aws configure get aws_secret_access_key --profile .env", tier: needs-review, staged: null}
+- {cmd: "cat server.pem", tier: needs-review, staged: null}
+
+# Deleting or writing outside the project is refused.
+- {cmd: "trash /dev/null", tier: changes-files, staged: null}
+- {cmd: "trash /etc/hosts", tier: changes-files, staged: null}
+- {cmd: "trash ../other", tier: changes-files, staged: null}
+- {cmd: "rm /etc/hosts", tier: changes-files, staged: null}
+- {cmd: "rm ../notes.txt", tier: changes-files, staged: null}
+- {cmd: "find /tmp/x -name '*.log' -delete", tier: changes-files, staged: null}
+- {cmd: "echo x > /etc/config.yaml", tier: changes-files, staged: null}
+- {cmd: "echo x >> ~/.zshrc", tier: changes-files, staged: null}
+- {cmd: "echo x > ../out.txt", tier: changes-files, staged: null}
+- {cmd: "cp a /etc/b", tier: changes-files, staged: null}
+- {cmd: "mv a ../b", tier: changes-files, staged: null}
+- {cmd: "trash notes.txt", tier: changes-files, staged: "trash notes.txt"}
+- {cmd: "rm notes.txt", tier: changes-files, never_raw: true}
+- {cmd: "echo x > out.txt", tier: changes-files, staged: "echo x > out.txt"}
+- {cmd: "echo x > /dev/null", tier: read-only}
+
+# Leaving the shell isn't a command tth should offer.
+- {cmd: "exit", tier: denied, staged: null}
+- {cmd: "logout", tier: denied, staged: null}
+
+# Inside the project is fine, however the path is written.
+- {cmd: "trash ./notes.txt", tier: changes-files, staged: "trash ./notes.txt"}
+- {cmd: "mkdir sub/dir", tier: changes-files, staged: "mkdir sub/dir"}

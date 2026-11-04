@@ -15,9 +15,12 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from tth.safety.classifier import Classification, Tier, classify
+from tth.safety.classifier import SENSITIVE_PATH_REASON, Classification, Tier, classify
 from tth.safety.parser import SimpleCommand
 
+_HARMLESS_TARGETS = {"/dev/null", "/dev/stdout", "/dev/stderr"}
+_FILE_CHANGERS = {"rm", "rmdir", "unlink", "shred", "truncate", "trash", "cp", "mv", "ln", "touch", "mkdir", "tee",
+                  "chmod", "chown", "chgrp"}  # fmt: skip
 _RISKY_TEXT = re.compile(r"\b(rm|unlink|shred|truncate|dd|mv|cp|sudo|chmod|chown|mkfs|sed\s+-i)\b|>")
 
 
@@ -141,12 +144,56 @@ def _rewrite_simple(cmd: SimpleCommand) -> tuple[list[str], list[str] | None, st
     return None
 
 
+def _outside_project(path: str, base: Path) -> bool:
+    """Would this path land outside the working directory? Expansions are judged by what they start with."""
+    if path.startswith(("$HOME", "${HOME}")):
+        return True
+    target = Path(os.path.expanduser(path))
+    target = target if target.is_absolute() else base / target
+    root = base.resolve()
+    resolved = Path(os.path.normpath(target.resolve() if target.is_absolute() else target))
+    return resolved != root and root not in resolved.parents
+
+
+def _changes_outside_project(c: Classification, base: Path) -> str | None:
+    """The first path a file-changing command would touch outside the working directory."""
+    for sc in c.parsed.commands:
+        for r in sc.redirects:
+            if r.target and not r.op.startswith("<") and r.target not in _HARMLESS_TARGETS:
+                if _outside_project(r.target, base):
+                    return r.target
+        name = sc.name.rsplit("/", 1)[-1].lower()
+        if name == "find":
+            if any(a == "-delete" or a in ("-exec", "-execdir") for a in sc.argv):
+                roots = [a for a in sc.argv[1:] if not a.startswith(("-", "(", "!"))][:1]
+                return next((a for a in roots if _outside_project(a, base)), None)
+            continue
+        if name in _FILE_CHANGERS or (name == "gio" and sc.argv[1:2] == ["trash"]):
+            for arg in sc.argv[1:]:
+                if not arg.startswith("-") and arg != "trash" and _outside_project(arg, base):
+                    return arg
+    return None
+
+
 def rewrite(command: str, cwd: str | os.PathLike[str] | None = None) -> Rewrite:
     c: Classification = classify(command)
     rw = Rewrite(original=command, staged=command, tier=c.tier, reasons=c.reasons)
     if c.tier == Tier.DENIED:
         rw.staged = None
         rw.notes.append("refused: " + "; ".join(c.reasons))
+        return rw
+
+    if SENSITIVE_PATH_REASON in c.reasons:
+        rw.staged = None
+        rw.notes.append(
+            "refused: it touches a secret path. tth won't help with those, so run it yourself if you mean to."
+        )
+        return rw
+
+    outside = _changes_outside_project(c, Path(cwd) if cwd else Path.cwd())
+    if outside:
+        rw.staged = None
+        rw.notes.append(f"refused: it changes {outside}, which is outside this project.")
         return rw
 
     # What we can't parse, we can't vouch for.

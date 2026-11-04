@@ -52,6 +52,7 @@ class Classification:
         return self.tier == Tier.READ_ONLY
 
 
+SENSITIVE_PATH_REASON = "touches a secret path"
 RO, CF, NR, DN = Tier.READ_ONLY, Tier.CHANGES_FILES, Tier.NEEDS_REVIEW, Tier.DENIED
 
 # Plain read-only tools whose flags never write or execute.
@@ -78,7 +79,7 @@ DENIED_CMDS = {
     "sudo", "su", "doas", "dd", "fdisk", "diskutil", "shutdown", "reboot", "halt", "poweroff",
     "launchctl", "systemctl", "crontab", "passwd", "chpass", "visudo", "csrutil", "nvram",
     "mount", "umount", "kextload", "iptables", "pfctl", "security", "osascript",
-    "wipefs", "parted", "sgdisk", "hdparm",
+    "wipefs", "parted", "sgdisk", "hdparm", "exit", "logout",
 }  # fmt: skip
 
 OPAQUE_CMDS = {
@@ -716,7 +717,7 @@ def _classify_simple(cmd: SimpleCommand) -> Verdict:
     args = [(a, not any(q in src for q in "'\"\\")) for a, src in zip(cmd.argv[1:], raw[1:], strict=False)]
     args += [(r.target or "", True) for r in cmd.redirects]
     if any(mentions_secret(w, may_glob=unquoted) for a, unquoted in args for w in brace_alternatives(a)):
-        v = v.worse(Verdict(NR, ["touches a secret path"]))
+        v = v.worse(Verdict(NR, [SENSITIVE_PATH_REASON]))
     return v
 
 
