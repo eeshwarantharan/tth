@@ -104,7 +104,9 @@ class ShellEnv:
     def on_text(self, text: str) -> StepOutcome:
         assert self.session is not None, "reset() first"
         self.st.records.append(Rec("?", False, "no_tool_call"))
-        return self.session.on_text(text)
+        out = self.session.on_text(text)
+        self._sync()  # a command in a prose answer can end the episode
+        return out
 
     def finish(self, reason: str) -> StepOutcome:
         assert self.session is not None, "reset() first"

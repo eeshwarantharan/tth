@@ -63,3 +63,10 @@ def test_the_right_answer_scores_correct(env: ShellEnv) -> None:
 )
 def test_a_number_answer_is_strict(lines: list[str], want: int, correct: bool) -> None:
     assert _number_answer(lines, {"value": want, "tol": 0}, ShellState()) is correct
+
+
+def test_a_command_staged_from_prose_is_scored(env: ShellEnv) -> None:
+    out = env.on_text("```bash\nfind src -name '*.py' | wc -l\n```")
+    assert out.done
+    assert env.st.decision == "stage"
+    assert reward(env).correct
