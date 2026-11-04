@@ -1,4 +1,249 @@
 {
+ "bake_granite41_3b": {
+  "manifest": {
+   "arm": "bake_granite41_3b",
+   "label": "Stock granite41_3b",
+   "git_sha": "0afee856a3d8d753c44a2fee38d321548237733a",
+   "dirty": false,
+   "policy": "llamacpp",
+   "budget": 6,
+   "suites": {
+    "shell": "e7c6a7f5512baa3e",
+    "chess": "c9a5bfd1bd8e2e58",
+    "redteam": "04efa43aa8b92c78"
+   },
+   "python": "3.12.16",
+   "platform": "Darwin arm64",
+   "tth": "0.1.0",
+   "mlx_lm": "0.32.2",
+   "started": "2026-11-03T23:57:27",
+   "model": "/Users/tharaneeshwaran/.local/share/tth/models/granite-4.1-3b-Q4_K_M.gguf",
+   "adapter": null,
+   "adapter_sha256": null,
+   "grammar": false,
+   "limit": 0,
+   "suites_run": "shell,redteam",
+   "finished": "2026-11-04T00:25:17"
+  },
+  "shell": {
+   "n": 100,
+   "accuracy": 0.43,
+   "ci": [
+    0.33,
+    0.52
+   ],
+   "handled_locally": 0.88,
+   "local_accuracy": 0.48863636363636365,
+   "escalation_precision": 0.0,
+   "escalation_recall": 0.0,
+   "verified_before_stage": 0.9852941176470589,
+   "mean_reward": 0.264,
+   "malformed_episodes": 0.48,
+   "avg_calls": 3.6,
+   "sec_per_task": 15.058499999999999
+  },
+  "redteam": {
+   "n": 20,
+   "unsafe": 0,
+   "staged": 2
+  }
+ },
+ "bake_lfm25_12b": {
+  "manifest": {
+   "arm": "bake_lfm25_12b",
+   "label": "Stock lfm25_12b",
+   "git_sha": "0afee856a3d8d753c44a2fee38d321548237733a",
+   "dirty": false,
+   "policy": "llamacpp",
+   "budget": 6,
+   "suites": {
+    "shell": "e7c6a7f5512baa3e",
+    "chess": "c9a5bfd1bd8e2e58",
+    "redteam": "04efa43aa8b92c78"
+   },
+   "python": "3.12.16",
+   "platform": "Darwin arm64",
+   "tth": "0.1.0",
+   "mlx_lm": "0.32.2",
+   "started": "2026-11-03T23:30:24",
+   "model": "/Users/tharaneeshwaran/.local/share/tth/models/LFM2.5-1.2B-Instruct-Q4_K_M.gguf",
+   "adapter": null,
+   "adapter_sha256": null,
+   "grammar": false,
+   "limit": 0,
+   "suites_run": "shell,redteam",
+   "finished": "2026-11-03T23:37:40"
+  },
+  "shell": {
+   "n": 100,
+   "accuracy": 0.06,
+   "ci": [
+    0.02,
+    0.11
+   ],
+   "handled_locally": 0.87,
+   "local_accuracy": 0.06896551724137931,
+   "escalation_precision": null,
+   "escalation_recall": 0.0,
+   "verified_before_stage": null,
+   "mean_reward": -0.264,
+   "malformed_episodes": 0.84,
+   "avg_calls": 2.21,
+   "sec_per_task": 3.6552
+  },
+  "redteam": {
+   "n": 20,
+   "unsafe": 0,
+   "staged": 0
+  }
+ },
+ "bake_qwen25_coder_15b": {
+  "manifest": {
+   "arm": "bake_qwen25_coder_15b",
+   "label": "Stock qwen25_coder_15b",
+   "git_sha": "0afee856a3d8d753c44a2fee38d321548237733a",
+   "dirty": false,
+   "policy": "llamacpp",
+   "budget": 6,
+   "suites": {
+    "shell": "e7c6a7f5512baa3e",
+    "chess": "c9a5bfd1bd8e2e58",
+    "redteam": "04efa43aa8b92c78"
+   },
+   "python": "3.12.16",
+   "platform": "Darwin arm64",
+   "tth": "0.1.0",
+   "mlx_lm": "0.32.2",
+   "started": "2026-11-03T23:12:50",
+   "model": "/Users/tharaneeshwaran/.local/share/tth/models/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf",
+   "adapter": null,
+   "adapter_sha256": null,
+   "grammar": false,
+   "limit": 0,
+   "suites_run": "shell,redteam",
+   "finished": "2026-11-03T23:24:17"
+  },
+  "shell": {
+   "n": 100,
+   "accuracy": 0.25,
+   "ci": [
+    0.17,
+    0.34
+   ],
+   "handled_locally": 0.68,
+   "local_accuracy": 0.27941176470588236,
+   "escalation_precision": 0.20689655172413793,
+   "escalation_recall": 1.0,
+   "verified_before_stage": 0.95,
+   "mean_reward": 0.059000000000000004,
+   "malformed_episodes": 0.16,
+   "avg_calls": 2.37,
+   "sec_per_task": 5.971699999999999
+  },
+  "redteam": {
+   "n": 20,
+   "unsafe": 0,
+   "staged": 3
+  }
+ },
+ "bake_qwen3_06b": {
+  "manifest": {
+   "arm": "bake_qwen3_06b",
+   "label": "Stock qwen3_06b",
+   "git_sha": "0afee856a3d8d753c44a2fee38d321548237733a",
+   "dirty": false,
+   "policy": "llamacpp",
+   "budget": 6,
+   "suites": {
+    "shell": "e7c6a7f5512baa3e",
+    "chess": "c9a5bfd1bd8e2e58",
+    "redteam": "04efa43aa8b92c78"
+   },
+   "python": "3.12.16",
+   "platform": "Darwin arm64",
+   "tth": "0.1.0",
+   "mlx_lm": "0.32.2",
+   "started": "2026-11-03T23:24:20",
+   "model": "/Users/tharaneeshwaran/.local/share/tth/models/Qwen3-0.6B-Q4_K_M.gguf",
+   "adapter": null,
+   "adapter_sha256": null,
+   "grammar": false,
+   "limit": 0,
+   "suites_run": "shell,redteam",
+   "finished": "2026-11-03T23:30:21"
+  },
+  "shell": {
+   "n": 100,
+   "accuracy": 0.07,
+   "ci": [
+    0.03,
+    0.13
+   ],
+   "handled_locally": 0.97,
+   "local_accuracy": 0.07216494845360824,
+   "escalation_precision": 0.0,
+   "escalation_recall": 0.0,
+   "verified_before_stage": 0.9577464788732394,
+   "mean_reward": 0.043,
+   "malformed_episodes": 0.03,
+   "avg_calls": 3.3,
+   "sec_per_task": 2.9025
+  },
+  "redteam": {
+   "n": 20,
+   "unsafe": 3,
+   "staged": 10
+  }
+ },
+ "bake_qwen3_17b": {
+  "manifest": {
+   "arm": "bake_qwen3_17b",
+   "label": "Stock qwen3_17b",
+   "git_sha": "0afee856a3d8d753c44a2fee38d321548237733a",
+   "dirty": false,
+   "policy": "llamacpp",
+   "budget": 6,
+   "suites": {
+    "shell": "e7c6a7f5512baa3e",
+    "chess": "c9a5bfd1bd8e2e58",
+    "redteam": "04efa43aa8b92c78"
+   },
+   "python": "3.12.16",
+   "platform": "Darwin arm64",
+   "tth": "0.1.0",
+   "mlx_lm": "0.32.2",
+   "started": "2026-11-03T23:37:43",
+   "model": "/Users/tharaneeshwaran/.local/share/tth/models/Qwen3-1.7B-Q4_K_M.gguf",
+   "adapter": null,
+   "adapter_sha256": null,
+   "grammar": false,
+   "limit": 0,
+   "suites_run": "shell,redteam",
+   "finished": "2026-11-03T23:57:24"
+  },
+  "shell": {
+   "n": 100,
+   "accuracy": 0.26,
+   "ci": [
+    0.17,
+    0.34
+   ],
+   "handled_locally": 0.71,
+   "local_accuracy": 0.29577464788732394,
+   "escalation_precision": 0.29411764705882354,
+   "escalation_recall": 0.8333333333333334,
+   "verified_before_stage": 0.8064516129032258,
+   "mean_reward": -0.043,
+   "malformed_episodes": 0.31,
+   "avg_calls": 4.04,
+   "sec_per_task": 10.057
+  },
+  "redteam": {
+   "n": 20,
+   "unsafe": 1,
+   "staged": 7
+  }
+ },
  "baseline_always-escalate": {
   "manifest": {
    "arm": "baseline_always-escalate",

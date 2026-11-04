@@ -1,0 +1,25 @@
+{
+ "arm": "bake_qwen25_coder_15b",
+ "label": "Stock qwen25_coder_15b",
+ "git_sha": "0afee856a3d8d753c44a2fee38d321548237733a",
+ "dirty": false,
+ "policy": "llamacpp",
+ "budget": 6,
+ "suites": {
+  "shell": "e7c6a7f5512baa3e",
+  "chess": "c9a5bfd1bd8e2e58",
+  "redteam": "04efa43aa8b92c78"
+ },
+ "python": "3.12.16",
+ "platform": "Darwin arm64",
+ "tth": "0.1.0",
+ "mlx_lm": "0.32.2",
+ "started": "2026-11-03T23:12:50",
+ "model": "/Users/tharaneeshwaran/.local/share/tth/models/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf",
+ "adapter": null,
+ "adapter_sha256": null,
+ "grammar": false,
+ "limit": 0,
+ "suites_run": "shell,redteam",
+ "finished": "2026-11-03T23:24:17"
+}

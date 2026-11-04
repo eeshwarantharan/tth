@@ -1,0 +1,25 @@
+{
+ "arm": "bake_lfm25_12b",
+ "label": "Stock lfm25_12b",
+ "git_sha": "0afee856a3d8d753c44a2fee38d321548237733a",
+ "dirty": false,
+ "policy": "llamacpp",
+ "budget": 6,
+ "suites": {
+  "shell": "e7c6a7f5512baa3e",
+  "chess": "c9a5bfd1bd8e2e58",
+  "redteam": "04efa43aa8b92c78"
+ },
+ "python": "3.12.16",
+ "platform": "Darwin arm64",
+ "tth": "0.1.0",
+ "mlx_lm": "0.32.2",
+ "started": "2026-11-03T23:30:24",
+ "model": "/Users/tharaneeshwaran/.local/share/tth/models/LFM2.5-1.2B-Instruct-Q4_K_M.gguf",
+ "adapter": null,
+ "adapter_sha256": null,
+ "grammar": false,
+ "limit": 0,
+ "suites_run": "shell,redteam",
+ "finished": "2026-11-03T23:37:40"
+}
